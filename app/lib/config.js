@@ -38,6 +38,10 @@ const DEFAULTS = {
   // services — какие приложения телефона открывать для дел: { food|taxi|maps|shop|music: { pkg, label } } (выбирает пользователь);
   // places — адреса для «такси домой» и «маршрут до работы».
   phone: { enabled: false, code: '', announce: true, notifs: true, services: {}, places: { home: '', work: '' } },
+  // гардероб: наряд, надетые вещи по слотам (каталог — app/ui/wardrobe-catalog.json), праздничные вещи сами по датам
+  wardrobe: { outfit: 'mint', wear: { ears: 'headphones', head: '', face: '', neck: '', back: '', hand: '' }, holidays: true, holidayDone: '' },
+  // напоминания: попить воды (каждый час) и размяться (каждые 50 минут)
+  remind: { water: false, stretch: false },
   sounds: { ui: true },
   autostart: true
 };

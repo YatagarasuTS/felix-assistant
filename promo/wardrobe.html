@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Felix — гардероб (9:16)</title>
+<!-- Вертикальный ролик «Гардероб Феликса»: 1080×1920. Вещи и наряды — те же, что в программе (app/ui/wardrobe3d.js). -->
+<style>
+  :root { --teal: #1FB5A3; --teal2: #5EF0D8; --text: #E8FBF8; --dim: #86AFAA; --font: 'Segoe UI Variable Text', 'Segoe UI', sans-serif; --display: 'Segoe UI Variable Display', 'Segoe UI', sans-serif; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; width: 1080px; height: 1920px; overflow: hidden; background: #000; color: var(--text); font: 26px/1.35 var(--font); -webkit-font-smoothing: antialiased; }
+  #root { position: absolute; left: 0; top: 0; width: 1080px; height: 1920px; overflow: hidden; }
+  .layer { position: absolute; inset: 0; }
+  #bg { background: radial-gradient(90% 55% at 50% 32%, #13474a 0%, #0a2427 50%, #040b0c 100%); }
+  #bg2 { background: radial-gradient(60% 35% at 85% 18%, rgba(255,143,179,.22), transparent 70%), radial-gradient(70% 40% at 10% 80%, rgba(31,181,163,.25), transparent 70%); }
+  #grid { background-image: linear-gradient(rgba(94,240,216,.05) 1px, transparent 1px), linear-gradient(90deg, rgba(94,240,216,.05) 1px, transparent 1px); background-size: 60px 60px; mask-image: radial-gradient(70% 60% at 50% 45%, #000, transparent); }
+  #floor { position: absolute; left: 0; right: 0; bottom: 0; height: 160px; background: radial-gradient(60% 100% at 40% 100%, rgba(94,240,216,.12), transparent 70%); }
+  canvas { position: absolute; left: 0; top: 0; width: 1080px; height: 1920px; }
+  #flash { position: absolute; inset: 0; background: #dffcf6; opacity: 0; pointer-events: none; }
+  #vignette { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(130% 100% at 50% 50%, transparent 62%, rgba(0,0,0,.5) 100%); }
+  .em { font-family: 'Segoe UI Emoji'; font-style: normal; }
+  #brand { position: absolute; left: 50%; top: 70px; transform: translateX(-50%); display: flex; gap: 14px; align-items: center; padding: 10px 22px 10px 12px; border-radius: 40px; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.14); font: 650 28px var(--display); letter-spacing: 2px; opacity: 0; white-space: nowrap; }
+  #brand .ic { width: 44px; height: 44px; border-radius: 13px; background: linear-gradient(180deg, #1FB5A3, #0c6e64); display: grid; place-items: center; }
+  #brand .ic svg { width: 32px; height: 32px; } #brand b { color: var(--teal2); font-weight: 650; }
+  .stitle { position: absolute; left: 0; right: 0; top: 150px; text-align: center; font: 800 66px/1.1 var(--display); text-shadow: 0 6px 30px rgba(0,0,0,.6); opacity: 0; }
+  .stitle .em { margin-right: 14px; }
+  #caption { position: absolute; left: 50%; top: 262px; padding: 14px 30px 14px 16px; border-radius: 46px; background: rgba(4,12,14,.86); border: 1px solid rgba(255,255,255,.16); font-size: 40px; display: flex; gap: 18px; align-items: center; opacity: 0; white-space: nowrap; box-shadow: 0 14px 40px rgba(0,0,0,.4); }
+  #caption .mic { width: 60px; height: 60px; border-radius: 50%; background: var(--teal); display: grid; place-items: center; flex: none; }
+  #caption .mic svg { width: 32px; height: 32px; fill: none; stroke: #04201D; stroke-width: 2.4; stroke-linecap: round; }
+  #caption .wave { display: flex; gap: 5px; align-items: center; height: 40px; } #caption .wave i { width: 6px; border-radius: 3px; background: var(--teal2); }
+  #intro { position: absolute; left: 0; right: 0; top: 180px; text-align: center; opacity: 0; }
+  #intro .name { font: 800 200px/0.95 var(--display); letter-spacing: 6px; background: linear-gradient(180deg, #ffffff 30%, #9ff5e8); -webkit-background-clip: text; color: transparent; }
+  #intro .tag { font: 600 58px/1.2 var(--display); color: #e8fbf8; margin-top: 28px; } #intro .tag em { font-style: normal; color: #ffb3cf; }
+  .bubble { position: absolute; max-width: 560px; padding: 22px 30px 24px; border-radius: 30px; font-size: 38px; line-height: 1.28; background: linear-gradient(180deg, rgba(14,32,36,.97), rgba(7,17,19,.95)); border: 2.5px solid var(--teal); box-shadow: 0 16px 40px rgba(0,0,0,.5), 0 0 26px rgba(31,181,163,.3); opacity: 0; }
+  .bubble::after { content: ''; position: absolute; left: var(--tail, 120px); bottom: -17px; width: 30px; height: 30px; margin-left: -15px; border-right: 2.5px solid var(--teal); border-bottom: 2.5px solid var(--teal); transform: rotate(45deg); background: #08171a; }
+  .bubble .caret { display: inline-block; width: 3px; height: 1em; margin-left: 3px; vertical-align: -5px; background: var(--teal2); }
+  /* список надетых вещей */
+  #chips { position: absolute; right: 36px; top: 400px; width: 380px; display: flex; flex-direction: column; gap: 16px; }
+  .chip { display: flex; gap: 16px; align-items: center; padding: 14px 22px 14px 14px; border-radius: 24px; background: rgba(4,12,14,.82); border: 1.5px solid rgba(94,240,216,.35); font: 650 32px var(--display); opacity: 0; box-shadow: 0 10px 30px rgba(0,0,0,.35); }
+  .chip .em { width: 64px; height: 64px; border-radius: 18px; background: rgba(31,181,163,.2); display: grid; place-items: center; font-size: 40px; flex: none; }
+  .chip.more { justify-content: center; background: var(--teal); color: #04201D; border-color: transparent; font-size: 34px; }
+  /* наряды */
+  #swatches { position: absolute; right: 40px; top: 380px; display: flex; flex-direction: column; gap: 12px; opacity: 0; }
+  .sw { display: flex; gap: 14px; align-items: center; padding: 8px 18px 8px 8px; border-radius: 40px; background: rgba(4,12,14,.7); border: 2px solid transparent; font: 600 28px var(--display); width: 330px; transition: none; }
+  .sw i { width: 52px; height: 52px; border-radius: 50%; flex: none; box-shadow: inset 0 0 0 2px rgba(255,255,255,.2); }
+  .sw.on { border-color: var(--teal2); background: rgba(31,181,163,.28); }
+  /* карточки */
+  .card { position: absolute; border-radius: 28px; background: linear-gradient(180deg, rgba(20,44,48,.97), rgba(9,22,25,.97)); border: 1.5px solid rgba(94,240,216,.3); box-shadow: 0 30px 80px rgba(0,0,0,.55), 0 0 30px rgba(31,181,163,.15); opacity: 0; }
+  #weather { right: 40px; top: 380px; width: 520px; padding: 30px 36px; }
+  #weather .city { color: var(--dim); font-size: 28px; } #weather .temp { font: 800 140px/1 var(--display); margin-top: 8px; } #weather .desc { font-size: 40px; margin-top: 6px; }
+  #weather .ic { position: absolute; right: 30px; top: 40px; font: 120px 'Segoe UI Emoji'; }
+  #weather .look { margin-top: 18px; padding-top: 18px; border-top: 1px solid rgba(255,255,255,.1); font-size: 30px; color: #bfeee8; }
+  #rps { right: 40px; top: 380px; width: 560px; padding: 28px 30px; text-align: center; }
+  #rps .row { display: flex; justify-content: space-around; align-items: center; } #rps .who { color: var(--dim); font-size: 26px; } #rps .big { font: 120px/1.1 'Segoe UI Emoji'; } #rps .vs { font: 800 44px var(--display); color: var(--teal2); }
+  #rps .res { font: 800 46px var(--display); margin-top: 10px; color: #ffd84a; }
+  #games { position: absolute; right: 40px; top: 860px; width: 560px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  #games div { padding: 16px 18px; border-radius: 20px; background: rgba(4,12,14,.78); border: 1px solid rgba(255,255,255,.12); font: 600 26px var(--display); opacity: 0; display: flex; gap: 10px; align-items: center; }
+  #games div .em { font-size: 34px; }
+  /* финал с QR-кодом */
+  #endtxt { position: absolute; left: 0; right: 0; top: 110px; text-align: center; opacity: 0; display: flex; flex-direction: column; align-items: center; }
+  #endtxt .logo { display: flex; gap: 22px; align-items: center; }
+  #endtxt .logo .ic { width: 110px; height: 110px; border-radius: 30px; background: linear-gradient(180deg, #1FB5A3, #0c6e64); display: grid; place-items: center; box-shadow: 0 12px 40px rgba(31,181,163,.35); } #endtxt .logo .ic svg { width: 78px; height: 78px; }
+  #endtxt .name { font: 800 128px/1 var(--display); letter-spacing: 4px; }
+  #endtxt .tag { font: 500 38px/1.3 var(--display); color: #bfeee8; margin: 18px 60px 26px; }
+  #qr { width: 440px; padding: 26px 26px 18px; border-radius: 34px; background: #fff; color: #0b1416; box-shadow: 0 20px 60px rgba(0,0,0,.5), 0 0 0 6px rgba(94,240,216,.35); }
+  #qr img { width: 388px; height: 388px; image-rendering: pixelated; display: block; }
+  #qr div { font: 700 25px var(--display); margin-top: 10px; display: flex; gap: 8px; align-items: center; justify-content: center; white-space: nowrap; }
+  #endtxt .cta { display: flex; gap: 18px; align-items: center; margin-top: 30px; padding: 22px 42px 22px 32px; border-radius: 26px; background: var(--teal); color: #04201D; font: 700 44px var(--display); box-shadow: 0 14px 40px rgba(31,181,163,.45); }
+  #endtxt .cta svg { width: 48px; height: 48px; fill: none; stroke: #04201D; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+  #endtxt .url { margin-top: 20px; font: 600 38px var(--display); color: var(--teal2); }
+  #endtxt .small { color: var(--dim); font-size: 28px; margin-top: 14px; }
+  #cursor { position: absolute; left: 0; top: 0; width: 56px; height: 56px; opacity: 0; z-index: 20; filter: drop-shadow(0 4px 8px rgba(0,0,0,.5)); }
+</style>
+</head>
+<body>
+<div id="root">
+  <div class="layer" id="bg"></div><div class="layer" id="bg2"></div><div class="layer" id="grid"></div><div id="floor"></div>
+  <canvas id="gl"></canvas>
+  <div id="brand"><span class="ic"><svg viewBox="0 0 24 24" id="brandclover"></svg></span>ФЕЛИКС <b>1.2</b></div>
+  <div class="stitle" id="t_acc"><span class="em">👑</span>Аксессуары</div>
+  <div class="stitle" id="t_outfit"><span class="em">👕</span>Переодевание</div>
+  <div class="stitle" id="t_weather"><span class="em">🌨️</span>По погоде</div>
+  <div class="stitle" id="t_games"><span class="em">🎮</span>Игры и забота</div>
+  <div id="intro"><div class="name">ФЕЛИКС</div><div class="tag">теперь с <em>гардеробом</em><br>и новыми фишками</div></div>
+  <div id="chips"></div>
+  <div id="swatches"></div>
+  <div class="card" id="weather"><div class="city">Москва · сейчас</div><div class="temp">−5°</div><div class="desc">Снег</div><span class="ic">❄️</span><div class="look">Феликс: «Снежный» наряд + 🧶 шапка + 🧣 шарф</div></div>
+  <div class="card" id="rps"><div class="row"><div><div class="who">Ты</div><div class="big">✊</div></div><div class="vs">VS</div><div><div class="who">Феликс</div><div class="big" id="rpsF">❔</div></div></div><div class="res" id="rpsRes"></div></div>
+  <div id="games"><div><span class="em">✊</span>Камень-ножницы-бумага</div><div><span class="em">🔢</span>Угадай число</div><div><span class="em">🧩</span>Загадки</div><div><span class="em">🍅</span>Помидор 25/5</div><div><span class="em">💧</span>Вода и разминка</div><div><span class="em">📸</span>Селфи</div></div>
+  <canvas id="fx"></canvas>
+  <div id="endtxt"><div class="logo"><div class="ic"><svg viewBox="0 0 24 24" id="endclover"></svg></div><div class="name">ФЕЛИКС</div></div>
+    <div class="tag">Голосовой 3D-помощник для Windows<br>Гардероб · игры · телефон с ПК</div>
+    <div id="qr"><img id="qrimg" alt="QR"><div><span class="em">📷</span>Сканируй — откроется GitHub</div></div>
+    <div class="cta"><svg viewBox="0 0 24 24"><path d="M12 3.5v11.5M7 10.5l5 5 5-5M4.5 19.5h15"/></svg>Скачать бесплатно</div>
+    <div class="url">github.com/YatagarasuTS/felix-assistant</div>
+    <div class="small">Windows 10 и 11 · открытый код (MIT)</div></div>
+  <div class="bubble" id="bubble"></div>
+  <div id="caption"><span class="mic"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg></span><span id="ctext"></span><span class="wave" id="cwave"></span></div>
+  <svg id="cursor" viewBox="0 0 24 24"><path d="M5 3l14 8.5-6.2 1.3 3.6 7-2.6 1.3-3.6-7L5 18z" fill="#fff" stroke="#111" stroke-width="1.3" stroke-linejoin="round"/></svg>
+  <div id="vignette"></div>
+  <div id="flash"></div>
+</div>
+<script type="importmap">{ "imports": { "three": "felix://app/ui/vendor/three.module.js" } }</script>
+<script type="module" src="wardrobe.js"></script>
+</body>
+</html>

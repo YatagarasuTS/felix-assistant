@@ -5,7 +5,7 @@ const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 let C = null, META = null, themes = {};
 
-const SECTIONS = [['general', 'Общие', 'user'], ['felix', 'Феликс', 'clover'], ['voice', 'Голос', 'voice'], ['mic', 'Микрофон', 'mic'], ['ai', 'Нейросеть', 'brain'], ['phone', 'Телефон', 'phone'], ['chats', 'Чаты и музыка', 'chat'], ['help', 'Что умеет', 'help'], ['about', 'О программе', 'info']];
+const SECTIONS = [['general', 'Общие', 'user'], ['felix', 'Феликс', 'clover'], ['wardrobe', 'Гардероб', 'shirt'], ['voice', 'Голос', 'voice'], ['mic', 'Микрофон', 'mic'], ['ai', 'Нейросеть', 'brain'], ['phone', 'Телефон', 'phone'], ['chats', 'Чаты и музыка', 'chat'], ['help', 'Что умеет', 'help'], ['about', 'О программе', 'info']];
 $('#nav').innerHTML = SECTIONS.map(([id, name, ic]) => `<button data-s="${id}">${svg(ic)}${name}</button>`).join('') + '<div class="ver" id="ver"></div>';
 $('#logo').innerHTML = svg('clover');
 $('#bmin').innerHTML = svg('min'); $('#bclose').innerHTML = svg('close');
@@ -50,8 +50,24 @@ function render() {
   if (document.activeElement !== $('#plHome')) $('#plHome').value = pl.home || '';
   if (document.activeElement !== $('#plWork')) $('#plWork').value = pl.work || '';
   if (CAT && document.activeElement?.closest?.('#svc') == null) renderServices();
+  renderWardrobe();
   renderChats();
 }
+
+// гардероб: наряды и аксессуары; клик — Феликс надевает с анимацией
+let WCAT = null;
+const SLOT_NAMES = { head: 'Голова', face: 'Лицо', neck: 'Шея и грудь', back: 'Спина', hand: 'В руке', ears: 'Уши' };
+function renderWardrobe() {
+  if (!WCAT || !C.wardrobe) return;
+  const w = C.wardrobe, wear = w.wear || {};
+  $('#outfits').innerHTML = WCAT.outfits.map(o => `<button data-o="${o.id}" class="${w.outfit === o.id ? 'sel' : ''}"><span class="sw" style="background:linear-gradient(135deg, ${o.swatch[0]} 55%, ${o.swatch[1]} 55%)"></span>${esc(o.name)}</button>`).join('');
+  $$('#outfits button').forEach(b => b.onclick = () => Y.invoke('wardrobe:set', 'outfit', b.dataset.o));
+  const slots = [...new Set(WCAT.accessories.map(a => a.slot))];
+  $('#accs').innerHTML = slots.map(s => `<div class="acc"><div class="slot">${SLOT_NAMES[s] || s}</div><div class="row2">${WCAT.accessories.filter(a => a.slot === s).map(a => `<button data-a="${a.id}" class="${wear[a.slot] === a.id ? 'sel' : ''}"><span class="em">${a.emoji}</span>${esc(a.name)}${wear[a.slot] === a.id ? '<small>надето · снять</small>' : ''}</button>`).join('')}</div></div>`).join('');
+  $$('#accs button').forEach(b => b.onclick = () => { const id = b.dataset.a, a = WCAT.accessories.find(x => x.id === id); Y.invoke('wardrobe:set', (C.wardrobe.wear || {})[a.slot] === id ? 'off' : 'wear', id); });
+}
+$('#wWeather').onclick = () => Y.invoke('wardrobe:set', 'weather');
+$('#wOff').onclick = () => Y.invoke('felix:command', 'сними все аксессуары');
 
 $$('.switch[data-k]').forEach(s => s.onclick = () => set(s.dataset.k, !get(C, s.dataset.k)));
 $('#nick').onchange = () => Y.invoke('config:set', { user: { nick: $('#nick').value.trim().slice(0, 24) } });
@@ -209,6 +225,8 @@ const HELP = [
   ['gear', 'Компьютер', 'сверни все окна · сделай скриншот · сколько места на диске · как там компьютер · выключи компьютер через час · очисти корзину'],
   ['phone', 'Телефон', 'где мой телефон · прими · отклони · на громкую · будильник на телефоне на семь · сколько заряда на телефоне · позвони маме'],
   ['phone', 'Телефон с компьютера', 'закажи пиццу · вызови такси до работы · маршрут до вокзала · купи наушники · покажи экран телефона · на телефоне назад · напиши на телефоне …'],
+  ['shirt', 'Гардероб', 'надень корону · надень что-нибудь · сними очки · переоденься в космос · оденься по погоде · что на тебе · покажи гардероб'],
+  ['clover', 'Игры и забота', 'камень, ножницы, бумага · загадай число · загадай загадку · запусти помидор · напоминай пить воду · подними настроение · сделай селфи'],
   ['brain', 'Нейросеть', 'любой вопрос, которого нет в командах: «почему небо голубое», «придумай тост на день рождения», «спроси у нейросети …»'],
   ['user', 'Сам Феликс', 'спрячься · покажись · перейди влево · стань больше · помаши · станцуй · не слушай · почему тебя зовут Феликс']
 ];
@@ -219,6 +237,7 @@ $('#repoLink').onclick = e => { e.preventDefault(); Y.invoke('open', 'url', 'htt
 $('#openData').onclick = () => Y.invoke('open', 'data');
 $('#openNotes').onclick = () => Y.invoke('open', 'notes');
 
+WCAT = await Y.invoke('wardrobe:catalog');
 const voices = await Y.invoke('voices');
 $('#voice').innerHTML = voices.map(v => `<option value="${esc(v.id)}">${esc(v.name)}</option>`).join('');
 const first = await init((c, meta) => { C = c; if (meta && meta.keyHint !== undefined) META = { ...META, keyHint: meta.keyHint }; if (meta && meta.theme && meta.theme.presets) themes = meta.theme.presets; if (META) render(); });

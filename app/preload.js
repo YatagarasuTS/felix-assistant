@@ -3,7 +3,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 const listeners = {};
 const CHANNELS = ['config', 'say', 'partial', 'heard', 'listen', 'level', 'mic', 'think', 'minimize', 'restore', 'idle-play', 'idle-end',
-  'goto', 'chime', 'notice', 'mouse:sync', 'side', 'phone', 'call'];
+  'goto', 'chime', 'notice', 'mouse:sync', 'side', 'phone', 'call', 'wardrobe', 'selfie'];
 
 for (const ch of CHANNELS) {
   ipcRenderer.on(ch, (e, data) => (listeners[ch] || []).forEach(fn => { try { fn(data); } catch (err) { console.error(err); } }));

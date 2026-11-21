@@ -3,7 +3,8 @@ import * as THREE from 'three';
 import { GLTFLoader } from './vendor/loaders/GLTFLoader.js';
 import { VRMLoaderPlugin, VRMUtils } from './vendor/three-vrm.module.js';
 import { Y, init, sound, svg } from './common.js';
-import { decorate, makePhone, holdPhone, phonePose } from './felix3d.js';
+import { makePhone, holdPhone, phonePose } from './felix3d.js';
+import * as WR from './wardrobe3d.js';
 
 const $ = s => document.querySelector(s);
 const Q = new URLSearchParams(location.search);
@@ -97,7 +98,6 @@ async function loadVRM(url) {
   v.scene.traverse(o => { o.frustumCulled = false; });
   if (v.lookAt) v.lookAt.target = lookTarget;
   v.userData = v.userData || {};
-  v.userData.decor = decorate(v);
   v.userData.phone = makePhone();
   holdPhone(v, v.userData.phone);
   return v;
@@ -127,6 +127,7 @@ function setBase() {
   target.leftLowerArm = E(0, -0.2, -0.1); target.rightLowerArm = E(0, 0.2, 0.1);
   target.leftHand = E(0, 0, -0.1); target.rightHand = E(0, 0, 0.1);
   target.leftUpperLeg = E(0, 0, 0.035); target.rightUpperLeg = E(0, 0, -0.035);
+  if (worn.hand) WR.holdPose(target);           // зонт или шарик в левой руке
   hipsYTarget = 0;
 }
 
@@ -230,10 +231,13 @@ function pose(t, dt) {
       if (stateT > 2.4) setState('idle'); break;
     }
   }
-  if (state === 'idle' && mode === 'home') {
+  if (state === 'idle' && mode === 'home' && !wact) {
     nextGesture -= dt;
-    if (nextGesture <= 0) { nextGesture = 12 + Math.random() * 18; setState(['stretch', 'lookaround', 'headphones', 'lookaround'][Math.floor(Math.random() * 4)]); }
+    if (nextGesture <= 0) { nextGesture = 12 + Math.random() * 18; setState(['stretch', 'lookaround', worn.ears ? 'headphones' : 'stretch', 'lookaround'][Math.floor(Math.random() * 4)]); }
   }
+  // руки к голове / лицу / шее, пока надевает или снимает вещь
+  const dp = dressPose || (Q.get('dress') ? { slot: Q.get('dress'), raise: Number(Q.get('raise') || 1) } : null);
+  if (dp) WR.wearPose(target, dp.slot, dp.raise, t);
 }
 
 function applyPose(dt) {
@@ -326,13 +330,13 @@ async function say({ text, wav, pitch = 1, volume = 0.9, anim = 'talk', emotion 
   };
   if (emotion === 'happy') exprTarget.happy = 0.8;
   if (emotion === 'shy') { exprTarget.happy = 0.5; exprTarget.relaxed = 0.5; }
-  const onPhone = () => state === 'phone';
-  if (!onPhone() && ['wave', 'happy', 'shy', 'think', 'listen'].includes(anim)) setState(anim);
+  const onPhone = () => state === 'phone' || !!wact;      // пока переодевается — поза не меняется, двигается только рот
+  if (!onPhone() && ['wave', 'happy', 'shy', 'think', 'listen', 'stretch'].includes(anim)) setState(anim);
   const after = () => {
     if (state === 'talk') setState('idle');
     finishTyping();
     clearTimeout(bubbleTimer);
-    bubbleTimer = setTimeout(() => { if (onPhone() && !minimized) bubble('Спрашиваю нейросеть…', '', { think: true, hold: true }); else hideBubble(); }, onPhone() ? 1200 : 3500);
+    bubbleTimer = setTimeout(() => { if (state === 'phone' && !minimized) bubble('Спрашиваю нейросеть…', '', { think: true, hold: true }); else hideBubble(); }, state === 'phone' ? 1200 : 3500);
     Y.invoke('felix:spoken');
   };
   if (!wav) { const d = Math.min(8000, 900 + text.length * 55); showText(d / 1000); fakeTalk(d, onPhone()); setTimeout(after, d); return; }
@@ -349,7 +353,7 @@ async function say({ text, wav, pitch = 1, volume = 0.9, anim = 'talk', emotion 
     src.connect(gain); gain.connect(analyser); analyser.connect(actx.destination);
     src.onended = () => { if (playing === src) { playing = null; analyser = null; after(); } };
     playing = src; src.start();
-    if (!onPhone() && !['wave', 'happy', 'shy', 'think'].includes(anim)) setState('talk');
+    if (!onPhone() && !['wave', 'happy', 'shy', 'think', 'stretch'].includes(anim)) setState('talk');
   } catch (e) { console.error(e); showText(); after(); }
 }
 
@@ -441,6 +445,7 @@ function drawParts(dt) {
     p.vy += (p.kind === 'leaf' ? 40 : 160) * dt; p.vx *= 0.98; p.x += p.vx * dt; p.y += p.vy * dt; p.rot += p.vr * dt;
     fxc.save(); fxc.globalAlpha = Math.min(1, p.life * 1.5); fxc.translate(p.x, p.y); fxc.rotate(p.rot);
     if (p.kind === 'leaf') drawLeaf(p.size, Math.random() < 0.3 ? '#26303F' : ac1);
+    else if (p.kind === 'heart') { const s = p.size * 2.2; fxc.fillStyle = '#ff6b9a'; fxc.beginPath(); fxc.moveTo(0, s * 0.3); fxc.bezierCurveTo(-s, -s * 0.4, -s * 0.4, -s * 1.1, 0, -s * 0.45); fxc.bezierCurveTo(s * 0.4, -s * 1.1, s, -s * 0.4, 0, s * 0.3); fxc.fill(); }
     else { fxc.fillStyle = ac; fxc.shadowColor = ac; fxc.shadowBlur = 8; fxc.beginPath(); fxc.arc(0, 0, p.size, 0, Math.PI * 2); fxc.fill(); }
     fxc.restore();
   }
@@ -523,6 +528,7 @@ const pickBuf = new Uint8Array(4);
 let wantPick = false;
 addEventListener('mousemove', e => {
   mouse = { x: e.clientX, y: e.clientY, t: performance.now() }; wantPick = true;
+  patCheck(e.clientX, e.clientY);
   if (minimized) { const hit = overUI(e.clientX, e.clientY); if (hit === ignoring) { ignoring = !hit; Y.invoke('mouse:ignore', ignoring); } }
 });
 function overUI(x, y) {
@@ -555,6 +561,136 @@ function layoutUI() {
   if (minimized) showOrb();
 }
 
+// ---------------------------------------------------------------- гардероб: аксессуары надеваются руками, наряды меняются за ширмой
+let CAT = { outfits: [], accessories: [] };
+const worn = {};                 // слот → надетая вещь (Mesh)
+const wq = [];                   // очередь: { action: 'wear'|'off'|'outfit', id|slot }
+let wact = null;                 // текущее действие
+let dressPose = null;            // { slot, raise } — руки у места вещи
+let outfitNow = 'mint';
+const outfitById = id => CAT.outfits.find(o => o.id === id);
+Y.on('wardrobe', a => { if (Array.isArray(a)) wq.push(...a); else wq.push(a); });
+
+/** Сразу, без анимации: при запуске и когда Феликс свёрнут */
+function dressInstant(w) {
+  if (!vrm || !w) return;
+  for (const [slot, m] of Object.entries(worn)) { m.removeFromParent(); delete worn[slot]; }
+  for (const id of Object.values(w.wear || {})) {
+    if (!id || !WR.ACC[id]) continue;
+    const m = WR.makeAccessory(id); WR.attachAccessory(vrm, m); worn[WR.slotOf(id)] = m;
+  }
+  outfitNow = w.outfit || 'mint';
+  WR.applyOutfit(vrm, outfitById(outfitNow));
+}
+
+function screenPoint(obj) { const v = new THREE.Vector3(); obj.getWorldPosition(v); return worldToScreen(v); }
+
+function startAction(a) {
+  const instant = minimized || mode !== 'home';
+  if (a.action === 'wear') {
+    const id = a.id, slot = WR.slotOf(id);
+    if (!WR.ACC[id] || (worn[slot] && worn[slot].userData.accId === id)) return;
+    if (worn[slot]) { wq.unshift(a); return startAction({ action: 'off', slot }); }   // сначала снять то, что на этом месте
+    const m = WR.makeAccessory(id); worn[slot] = m;
+    if (instant) { WR.attachAccessory(vrm, m); return; }
+    wact = { kind: 'wear', mesh: m, slot, t: 0 };
+    hideBubble();
+  } else if (a.action === 'off') {
+    const slot = a.slot || WR.slotOf(a.id), m = worn[slot];
+    if (!m) return;
+    delete worn[slot];
+    if (instant) { m.removeFromParent(); return; }
+    wact = { kind: 'off', mesh: m, slot, t: 0, side: side === 'left' ? 1 : -1 };
+  } else if (a.action === 'outfit') {
+    const o = outfitById(a.id);
+    if (!o || a.id === outfitNow) return;
+    if (instant) { WR.applyOutfit(vrm, o); outfitNow = o.id; return; }
+    WR.prepareOutfit(vrm, o);                       // текстуры считаем заранее, чтобы за ширмой не было рывка
+    const dir = side === 'left' ? 1 : -1;
+    const screen = WR.makeScreen(); screen.position.set(dir * 0.62, 0, 0.06); root.add(screen);
+    const cloth = WR.makeCloth((outfitById(outfitNow) || {}).main || '#9fd9dd'); cloth.visible = false; root.add(cloth);
+    wact = { kind: 'outfit', o, t: 0, dir, screen, cloth, swapped: false, sparkled: false, walking: null };
+    sound('pop', 0.35); burst(24, 'leaf', foot.x + dir * 0.62 * pxPerM, foot.y - 0.9 * pxPerM);
+  }
+}
+
+function wardrobeTick(dt, t) {
+  if (!vrm) return;
+  if (!wact && wq.length && state !== 'phone') startAction(wq.shift());
+  dressPose = null;
+  if (!wact) return;
+  const A = wact;
+  A.t += dt;
+  if (A.kind === 'wear') {
+    const r = WR.wearStep(scene, vrm, A.mesh, A.t / WR.WEAR_T);
+    dressPose = { slot: A.slot, raise: r.raise };
+    if (r.appear && !A.appeared) { A.appeared = true; sound('pop', 0.3); const p = screenPoint(A.mesh); burst(14, 'spark', p.x, p.y); }
+    if (A.t / WR.WEAR_T > 0.72 && !A.landed) { A.landed = true; exprTarget.happy = 1; const p = screenPoint(A.mesh); burst(18, 'spark', p.x, p.y); }
+    if (r.done) { wact = null; setState('happy'); }
+  } else if (A.kind === 'off') {
+    const r = WR.offStep(scene, vrm, A.mesh, A.t / WR.OFF_T, A.side);
+    dressPose = { slot: A.slot, raise: r.raise };
+    if (r.toss && !A.tossed) { A.tossed = true; sound('hide', 0.3); }
+    if (r.gone) { const p = screenPoint(A.mesh); burst(16, 'leaf', p.x, p.y); A.mesh.removeFromParent(); wact = null; }
+  } else if (A.kind === 'outfit') {
+    const k = A.t / WR.OUTFIT_T, S = WR.outfitStep(k, A.dir);
+    A.screen.userData.set(S.screenOpen);
+    turn.position.set(S.offX, 0, S.offZ);
+    if (S.walking !== A.walking) { A.walking = S.walking; setState(S.walking ? 'walk' : 'idle'); }
+    facingTarget = S.facing;
+    if (S.swap && !A.swapped) { A.swapped = true; WR.applyOutfit(vrm, A.o); outfitNow = A.o.id; sound('pop', 0.3); }
+    if (S.sparkle && !A.sparkled) { A.sparkled = true; burst(26, 'spark', foot.x + A.dir * 0.62 * pxPerM, foot.y - 1.95 * pxPerM); }
+    if (S.cloth) { A.cloth.visible = S.cloth.scale > 0.01; A.cloth.position.set(S.cloth.x, S.cloth.y, S.cloth.z); A.cloth.rotation.set(S.cloth.rx, 0, S.cloth.rz); A.cloth.scale.setScalar(Math.max(0.001, S.cloth.scale)); }
+    else A.cloth.visible = false;
+    if (S.happy && !A.cheered) { A.cheered = true; setState('happy'); burst(50, 'leaf'); sound('appear', 0.35); }
+    if (k >= 1) { root.remove(A.screen); root.remove(A.cloth); turn.position.set(0, 0, 0); facingTarget = 0; wact = null; if (state === 'walk') setState('idle'); }
+  }
+}
+
+// погладить по голове: мышь ходит туда-сюда над головой
+const patTrail = [];
+let patAt = 0;
+function patCheck(x, y) {
+  if (!vrm || minimized || mode !== 'home' || wact) return;
+  const hp = new THREE.Vector3(); B.head.getWorldPosition(hp); hp.y += 0.1;
+  const h = worldToScreen(hp), r = 0.16 * pxPerM;
+  if (Math.abs(x - h.x) > r || Math.abs(y - h.y) > r * 0.8) { patTrail.length = 0; return; }
+  const now = performance.now();
+  patTrail.push({ x, t: now });
+  while (patTrail.length && now - patTrail[0].t > 1600) patTrail.shift();
+  let turns = 0;
+  for (let i = 2; i < patTrail.length; i++) { const a = patTrail[i - 1].x - patTrail[i - 2].x, b = patTrail[i].x - patTrail[i - 1].x; if (a * b < 0 && Math.abs(b) > 2) turns++; }
+  if (turns >= 4 && now - patAt > 4000) {
+    patAt = now; patTrail.length = 0;
+    setState('shy'); exprTarget.happy = 1;
+    burst(10, 'heart', h.x, h.y - 10);
+    Y.invoke('felix:petted');
+  }
+}
+
+// селфи: Феликс позирует, картинка с подписью уходит в главный процесс (сохраняется в «Изображения»)
+Y.on('selfie', async () => {
+  if (!vrm || minimized) return;
+  setState('wave'); exprTarget.happy = 1;
+  await sleep(900);
+  renderer.render(scene, camera);
+  const src = canvas;
+  const hp = new THREE.Vector3(); B.head.getWorldPosition(hp);
+  const top = worldToScreen(hp.clone().add(new THREE.Vector3(0, 0.42, 0))).y, bottom = foot.y + 6;
+  const dpr = renderer.getPixelRatio(), cw = 720, ch = 900;
+  const c = document.createElement('canvas'); c.width = cw; c.height = ch;
+  const x = c.getContext('2d');
+  const g = x.createRadialGradient(cw / 2, ch * 0.42, 40, cw / 2, ch * 0.5, ch * 0.75); g.addColorStop(0, '#16585a'); g.addColorStop(1, '#061214');
+  x.fillStyle = g; x.fillRect(0, 0, cw, ch);
+  const sh = (bottom - top) * dpr, sw = sh * 0.8, sx = (foot.x * dpr) - sw / 2 + (turn.position.x * pxPerM * dpr), sy = top * dpr;
+  const scale = (ch - 120) / sh;
+  x.drawImage(src, sx, sy, sw, sh, (cw - sw * scale) / 2, 30, sw * scale, sh * scale);
+  x.fillStyle = 'rgba(255,255,255,.9)'; x.font = '600 30px "Segoe UI Variable Display", "Segoe UI"'; x.textAlign = 'center';
+  x.fillText('Феликс · ' + new Date().toLocaleDateString('ru-RU'), cw / 2, ch - 40);
+  Y.invoke('felix:selfie', c.toDataURL('image/png'));
+  setTimeout(() => setState('happy'), 300);
+});
+
 // ---------------------------------------------------------------- цикл
 const clock = new THREE.Clock();
 let frameAcc = 0;
@@ -566,7 +702,7 @@ function loop() {
   if (!vrm) return;
   if (minimized && !parts.length && visibleScale < 0.02) return;
   frameAcc += dt;
-  const fps = (mode === 'home' && state === 'idle' && !playing && !walk) ? 30 : 60;
+  const fps = (mode === 'home' && state === 'idle' && !playing && !walk && !wact) ? 30 : 60;
   if (frameAcc < 1 / fps - 0.002) return;
   const fdt = frameAcc; frameAcc = 0;
   if (walk) {
@@ -579,8 +715,9 @@ function loop() {
       placeRoot();
     }
   }
+  wardrobeTick(fdt, t);
   facing += (facingTarget - facing) * (1 - Math.exp(-fdt * 8));
-  if (!walk && state === 'idle' && mode === 'home') facingTarget = side === 'left' ? 0.18 : -0.18;   // чуть развёрнут к центру экрана
+  if (!walk && !wact && state === 'idle' && mode === 'home') facingTarget = side === 'left' ? 0.18 : -0.18;   // чуть развёрнут к центру экрана
   spin += spinV * fdt; spinV *= Math.exp(-fdt * 3); if (spinV < 0.3) { spin += (Math.round(spin / (Math.PI * 2)) * Math.PI * 2 - spin) * (1 - Math.exp(-fdt * 6)); }
   turn.rotation.y = facing + spin;
   visibleScale += (scaleTarget - visibleScale) * (1 - Math.exp(-fdt * 7));
@@ -588,7 +725,7 @@ function loop() {
   updateMouth();
   pose(t, fdt);
   applyPose(fdt);
-  if (vrm.userData.decor) vrm.userData.decor(t);
+  WR.updateAccessories(vrm, t);
   if (vrm.userData.phone) vrm.userData.phone.visible = state === 'phone';
   vrm.update(fdt);
   renderer.render(scene, camera);
@@ -603,6 +740,10 @@ try {
   const url = await Y.invoke('model');
   const v = await loadVRM(url);
   attach(v);
+  try { CAT = await (await fetch('./wardrobe-catalog.json')).json(); WR.setCatalog(CAT); } catch (e) { console.error('wardrobe catalog', e); }
+  // проверочные снимки: ?wear=crown,glasses&outfit=cosmos&dress=head
+  const qw = Q.get('wear'), qo = Q.get('outfit');
+  dressInstant(qw || qo ? { outfit: qo || 'mint', wear: Object.fromEntries((qw || '').split(',').filter(Boolean).map(id => [WR.slotOf(id), id])) } : (cfg.wardrobe || { wear: { ears: 'headphones' } }));
   if (cfg.assistant.minimized) { minimized = true; turn.visible = false; visibleScale = 0; scaleTarget = 0; showOrb(); }
   else if (PORTRAIT) { visibleScale = 1; scaleTarget = 1; setState(Q.get('pose') || 'wave'); exprTarget.happy = 1; }
   else { visibleScale = 0.01; turn.scale.setScalar(0.01); scaleTarget = 1; spinV = 14; burst(60, 'leaf'); sound('appear', 0.45); setTimeout(() => setState('wave'), 700); }

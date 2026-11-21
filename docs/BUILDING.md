@@ -10,6 +10,8 @@ app\                 программа на Electron 33
   preload.js         мост окон
   lib\brain.js       разбор голосовых команд (русский, офлайн)
   lib\phoneapps.js   дела на телефоне: доставка, такси, карты, покупки, музыка — каталог приложений и их ссылки
+  ui\wardrobe3d.js   гардероб в 3D: аксессуары из простых фигур, ширма, перекраска нарядов, анимации надевания
+  ui\wardrobe-catalog.json  каталог нарядов и вещей (имена, слова для голоса, цвета) — один для программы, настроек и роликов
   lib\llm.js         нейросеть: аккаунт Anthropic пользователя (@anthropic-ai/sdk), Ollama
   lib\link.js        связь с «Феликс Link»: UDP-поиск 47891, TCP 47890 (AES-256-GCM), APK по HTTP 47892
   lib\tts.js         голос Piper; свой HTTP-голос; голос Windows
@@ -22,8 +24,8 @@ build\               Build-Felix.ps1 (установщик, переносной
 stage\               данные программы для запуска из исходников: native, voice, stt, models, sounds, phone
 model\               3D-модель: felix.vroid (проект VRoid Studio) и felix.vrm
 promo\               рекламные ролики: make_audio*.py (реплики Piper, музыка) → сцена HTML → main.js (кадры → ffmpeg)
-tools\               shot.js (снимки окон), brain-*-test.js (разбор фраз), felix_recolor.py, make_icons.py, npm-fetch.ps1
-test\                эмуляторы телефона (link_client.js, link_phone_test.js), запуск из исходников
+tools\               shot.js (снимки окон), wardrobe-gallery.html (все вещи, наряды, позы и ширма — сеткой), brain-*-test.js (разбор фраз), felix_recolor.py, make_icons.py, npm-fetch.ps1
+test\                эмуляторы телефона (link_client.js, link_phone_test.js, wardrobe_test.js), запуск из исходников
 docs\                LICENSE.txt и README.txt для установщика, тексты сторонних лицензий, эта страница
 ```
 
@@ -76,10 +78,13 @@ powershell -ExecutionPolicy Bypass -File build\Build-Felix.ps1     # FelixSetup-
 ```powershell
 $env:ELECTRON_RUN_AS_NODE = '1'
 node_modules\electron\dist\electron.exe tools\brain-phone-test.js                 # разбор фраз для телефона
+node_modules\electron\dist\electron.exe tools\brain-wardrobe-test.js              # гардероб, игры, забота
 # Феликс с данными, где включён телефон (phone.enabled, code TESTCODE, голос off), затем:
 node_modules\electron\dist\electron.exe test\link_phone_test.js TESTCODE report.txt  # эмулятор «Феликс Link» 1.1
 node_modules\electron\dist\electron.exe test\link_client.js TESTCODE report.txt stage\phone\FelixLink.apk
 ```
+
+Гардероб и игры голосом — 	est\wardrobe_test.js TESTCODE report.txt (Феликс запущен с FELIX_PICTURES и FELIX_SHOTS — тестовые папки для селфи и покадровых снимков анимаций). Посадка вещей: `electron tools\shot.js <папка> "/tools/wardrobe-gallery.html?mode=acc&part=0" 1600 1000 7000` (mode: acc, showcase, outfits, poses, screen, item&id=…).
 
 Снимки окон без запуска ассистента: `electron tools\shot.js <папка> phone.html 1020 860 2500 settings.html#phone 980 1700 3000` (`SHOT_PHONE_ON=1` — «подключённый» телефон).
 

@@ -15,6 +15,7 @@ const { Llm, explain } = require('./lib/llm');
 const { Link, newCode, normCode, APK_PORT, PORT: LINK_PORT, DISC_PORT } = require('./lib/link');
 const brain = require('./lib/brain');
 const phoneapps = require('./lib/phoneapps');
+const WCAT = require('./ui/wardrobe-catalog.json');
 
 const VERSION = require('./package.json').version;
 // HOME — папка программы: рядом с Felix.exe лежат native\, voice\, stt\, models\, sounds\
@@ -270,6 +271,11 @@ async function handle(p, raw) {
       if (p.intent === 'unknown' || p.intent === 'call') { openSettings('phone'); return say('Не расслышал. Выбери приложение в настройках, раздел «Телефон», — я запомню.'); }
     }
   }
+  // идёт игра: камень-ножницы-бумага, угадай число, загадка
+  if (pendingGame && Date.now() < pendingGame.until && !/^(game|wardrobe|selfie)/.test(p.intent)) {
+    const done = await gameAnswer(brain.norm(raw || p.text || ''), p);
+    if (done !== false) return;
+  }
   switch (p.intent) {
     case 'call': startListening(8); return say(pick(S.call), { anim: 'listen' });
     case 'yes': {
@@ -349,6 +355,20 @@ async function handle(p, raw) {
     case 'phone.food': case 'phone.taxi': case 'phone.route': case 'phone.map': case 'phone.shop': case 'phone.music':
     case 'phone.nav': case 'phone.type': case 'phone.url': case 'phone.clip': case 'phone.panel':
       return phoneHandle(p);
+    // гардероб и развлечения
+    case 'wardrobe.wear': return wearItem(p.id, { asked: p.asked });
+    case 'wardrobe.off': return takeOff(p);
+    case 'wardrobe.outfit': return changeOutfit(p.id, { asked: p.asked });
+    case 'wardrobe.weather': return dressForWeather();
+    case 'wardrobe.what': return describeLook();
+    case 'wardrobe.open': openSettings('wardrobe'); return say('Открываю гардероб. Выбирай, что мне надеть!', { emotion: 'happy' });
+    case 'selfie': return takeSelfie();
+    case 'game.rps': case 'game.guess': case 'game.riddle': case 'game.any': return startGame(p);
+    case 'pomodoro.start': return pomodoroStart();
+    case 'pomodoro.stop': return pomodoroStop();
+    case 'pomodoro.left': return pomodoroLeft();
+    case 'remind.water': case 'remind.stretch': return setReminder(p.intent.split('.')[1], p.on);
+    case 'chat.cheer': return say(pick(S.cheer(nick())), { anim: 'happy', emotion: 'happy' });
     case 'timer.cancel': {
       const n = timers.length;
       timers.splice(0).forEach(t => clearTimeout(t.handle));
@@ -1218,6 +1238,250 @@ async function runService(kind, app, args = {}, picked = false) {
   return say(text, { emotion: 'happy' });
 }
 
+// ---------------------------------------------------------------- гардероб: аксессуары надеваются руками, наряды меняются за ширмой
+const accById = id => WCAT.accessories.find(a => a.id === id);
+const outfitById = id => WCAT.outfits.find(o => o.id === id);
+const cap1 = s => s.charAt(0).toUpperCase() + s.slice(1);
+const andList = a => (a.length > 1 ? a.slice(0, -1).join(', ') + ' и ' + a[a.length - 1] : a[0] || '');
+const wardrobe = () => cfg.get().wardrobe;
+const dressWin = actions => { send(W.assistant, 'wardrobe', actions); if (process.env.FELIX_SHOTS) shootAssistant(actions); };
+// только для проверок (FELIX_SHOTS=<папка>): снимки окна Феликса каждые 0,4 с, пока идёт анимация гардероба
+let shotN = 0;
+function shootAssistant(actions) {
+  const list = [].concat(actions), dur = list.reduce((s, a) => s + (a.action === 'outfit' ? 5.8 : 2.2), 0.5);
+  const tag = list.map(a => a.id || a.slot).join('+');
+  for (let i = 0; i * 0.4 < dur; i++) setTimeout(async () => {
+    const w = W.assistant; if (!w || w.isDestroyed()) return;
+    try { const img = await w.webContents.capturePage(); fs.mkdirSync(process.env.FELIX_SHOTS, { recursive: true }); fs.writeFileSync(path.join(process.env.FELIX_SHOTS, `${String(++shotN).padStart(3, '0')}-${tag}-${(i * 0.4).toFixed(1)}.png`), img.toPNG()); } catch { }
+  }, i * 400);
+}
+const dressAnimated = () => !!(W.assistant && !W.assistant.isDestroyed() && !cfg.get().assistant.minimized);
+
+function wearItem(id, { asked = '', quiet = false } = {}) {
+  if (id === '') {                                         // «надень что-нибудь»
+    const free = WCAT.accessories.filter(a => (wardrobe().wear || {})[a.slot] !== a.id && a.id !== 'headphones');
+    id = free[Math.floor(Math.random() * free.length)].id;
+  }
+  const a = accById(id);
+  if (!a) return say(`${asked ? `«${asked}» в гардеробе нет` : 'Такого в гардеробе нет'}. Могу надеть, например, корону, шапку, очки, кошачьи ушки или крылья. Весь список — в настройках, «Гардероб».`, { anim: 'think' });
+  const cur = (wardrobe().wear || {})[a.slot];
+  if (cur === id) return quiet ? null : say(`${a.name} уже на мне!`, { emotion: 'happy' });
+  cfg.patch({ wardrobe: { wear: { [a.slot]: id } } });
+  dressWin({ action: 'wear', id });
+  broadcastWardrobe();
+  if (quiet) return null;
+  const was = cur ? accById(cur) : null;
+  return say(brain.pick(was ? [`Меняю ${was.acc} на ${a.acc}!`, `Снимаю ${was.acc} — надеваю ${a.acc}.`] : [`Надеваю ${a.acc}!`, `Сейчас примерю ${a.acc}.`, `${cap1(a.acc)}? Отличный выбор!`]), { emotion: 'happy' });
+}
+function takeOff(p) {
+  const w = { ...(wardrobe().wear || {}) };
+  // «сними очки» снимает то, что на лице (хоть солнечные, хоть звёздные); «сними всё» оставляет наушники
+  let slots = p.all ? Object.keys(w).filter(s => w[s] && s !== 'ears') : [p.slot || (accById(p.id) || {}).slot];
+  slots = slots.filter(s => s && w[s]);
+  if (!slots.length) return say(p.id && accById(p.id) ? `На мне сейчас нет: ${accById(p.id).name.toLowerCase()}.` : 'Снимать нечего!');
+  const names = slots.map(s => accById(w[s]).acc);
+  cfg.patch({ wardrobe: { wear: Object.fromEntries(slots.map(s => [s, ''])) } });
+  dressWin(slots.map(slot => ({ action: 'off', slot })));
+  broadcastWardrobe();
+  return say(`Снимаю ${andList(names)}.`);
+}
+function changeOutfit(id, { asked = '', quiet = false } = {}) {
+  const now = wardrobe().outfit || 'mint';
+  if (id === '') { const others = WCAT.outfits.filter(o => o.id !== now); id = others[Math.floor(Math.random() * others.length)].id; }
+  const o = outfitById(id);
+  if (!o) return say(`Наряда «${asked}» у меня нет. Есть: ${andList(WCAT.outfits.map(x => x.short))}.`, { anim: 'think' });
+  if (id === now) return quiet ? null : say(`Я и так в наряде «${o.name}»!`, { emotion: 'happy' });
+  cfg.patch({ wardrobe: { outfit: id } });
+  dressWin({ action: 'outfit', id });
+  broadcastWardrobe();
+  if (quiet) return null;
+  if (!dressAnimated()) return say(`Переоделся: «${o.name}».`);
+  say(brain.pick(['Минутку, переоденусь!', 'Секунду, я за ширму!', 'Не подглядывай — переодеваюсь!']), { emotion: 'happy' });
+  setTimeout(() => say(brain.pick([`Та-да! «${o.name}». Как тебе?`, `Готово! Наряд «${o.name}».`, `Ну как? «${o.name}» мне идёт?`]), { emotion: 'happy' }), 4600);
+}
+function describeLook() {
+  const w = wardrobe(), o = outfitById(w.outfit) || WCAT.outfits[0];
+  const items = Object.values(w.wear || {}).filter(Boolean).map(id => accById(id)).filter(Boolean).map(a => a.name.toLowerCase());
+  return say(`Сейчас на мне наряд «${o.name}»${items.length ? ', а ещё ' + andList(items) : ''}. Хочешь — переоденусь: скажи «переоденься».`, { emotion: 'happy' });
+}
+const broadcastWardrobe = () => send(W.settings, 'config', { config: cfg.get(), theme: themeVars() });
+
+/** «Оденься по погоде»: наряд и вещи по температуре и осадкам */
+function weatherLook(t, code) {
+  const rain = (code >= 51 && code <= 67) || (code >= 80 && code <= 82) || code >= 95, snow = (code >= 71 && code <= 77) || code === 85 || code === 86;
+  const hand = rain ? 'umbrella' : '';
+  if (snow || t <= -5) return { outfit: 'snow', wear: { head: 'beanie', neck: 'scarf', face: '', hand: '' } };
+  if (t <= 7) return { outfit: 'midnight', wear: { head: 'beanie', neck: 'scarf', face: '', hand } };
+  if (t <= 16) return { outfit: 'denim', wear: { head: '', neck: 'scarf', face: '', hand } };
+  if (t <= 23) return { outfit: 'mint', wear: { head: 'cap', neck: '', face: '', hand } };
+  return { outfit: 'lemon', wear: { head: 'cap', neck: '', face: 'sunglasses', hand } };
+}
+async function dressForWeather() {
+  const home = await homeCity();
+  if (!home) return askCity();
+  const f = await forecast(home.lat, home.lon);
+  if (!f || !f.current) return say('Не получилось узнать погоду. Нет интернета?');
+  const t = Math.round(f.current.temperature_2m), code = f.current.weather_code, look = weatherLook(t, code);
+  const w = wardrobe(), cur = w.wear || {}, actions = [], put = [];
+  if (look.outfit !== w.outfit) actions.push({ action: 'outfit', id: look.outfit });
+  for (const [slot, id] of Object.entries(look.wear)) {
+    if ((cur[slot] || '') === id) continue;
+    if (!id) actions.push({ action: 'off', slot });
+    else { actions.push({ action: 'wear', id }); put.push(accById(id).acc); }
+  }
+  const deg = `${t > 0 ? 'плюс ' : t < 0 ? 'минус ' : ''}${Math.abs(t)} ${brain.plural(Math.abs(t), 'градус', 'градуса', 'градусов')}`;
+  const desc = (WMO[code] || '').toLowerCase();
+  if (!actions.length) return say(`На улице ${deg}, ${desc}. Я уже одет по погоде!`, { emotion: 'happy' });
+  cfg.patch({ wardrobe: { outfit: look.outfit, wear: look.wear } });
+  dressWin(actions);
+  broadcastWardrobe();
+  return say(`На улице ${deg}, ${desc}. ${look.outfit !== w.outfit ? `Переодеваюсь в «${outfitById(look.outfit).name}»` : 'Одеваюсь'}${put.length ? ` и беру ${andList(put)}` : ''}!`, { emotion: 'happy' });
+}
+
+/** Праздники: колпак на Новый год, шляпа волшебника на Хэллоуин, венок 8 марта… один раз в день, можно выключить в настройках */
+function holidayLook(d = new Date()) {
+  const m = d.getMonth() + 1, day = d.getDate();
+  if ((m === 12 && day >= 20) || (m === 1 && day <= 10)) return { id: 'santa', line: m === 12 ? 'Скоро Новый год! Надеваю новогодний колпак.' : 'С Новым годом! Я в праздничном колпаке.' };
+  if (m === 10 && day === 31) return { id: 'wizard', line: 'Сегодня Хэллоуин! Надеваю шляпу волшебника. Бу!' };
+  if ((m === 2 && day === 14) || (m === 3 && day === 8)) return { id: 'wreath', line: m === 3 ? 'С Восьмым марта! Надеваю венок.' : 'С Днём святого Валентина! Надеваю венок.' };
+  if (m === 4 && day === 1) return { id: 'horns', line: 'Первое апреля — никому не верю! Надеваю рожки.' };
+  if (m === 6 && day === 1) return { id: 'balloon', line: 'Сегодня День защиты детей! Держи шарик.' };
+  return null;
+}
+function holidayCheck() {
+  const w = wardrobe(), today = new Date().toISOString().slice(0, 10), h = holidayLook();
+  if (!w.holidays || !h || w.holidayDone === today) return;
+  cfg.patch({ wardrobe: { holidayDone: today } });
+  if ((w.wear || {})[accById(h.id).slot] === h.id) return;
+  wearItem(h.id, { quiet: true });
+  say(h.line, { emotion: 'happy' });
+}
+
+// ---------------------------------------------------------------- селфи и «погладить»
+function takeSelfie() {
+  if (!W.assistant || W.assistant.isDestroyed()) return say('Меня сейчас не видно — не получится сфотографироваться.');
+  if (cfg.get().assistant.minimized) setMinimized(false);
+  say(brain.pick(['Улыбочку! Раз, два…', 'Сейчас, только причешусь… Готов!', 'Фото на память? С удовольствием!']), { emotion: 'happy' });
+  setTimeout(() => send(W.assistant, 'selfie', {}), 1400);
+}
+function saveSelfie(dataUrl) {
+  try {
+    const dir = process.env.FELIX_PICTURES || path.join(app.getPath('pictures'), 'Феликс');   // FELIX_PICTURES — для проверок
+    fs.mkdirSync(dir, { recursive: true });
+    const d = new Date(), f = path.join(dir, `selfie-${d.toISOString().slice(0, 10)}-${String(d.getHours()).padStart(2, '0')}${String(d.getMinutes()).padStart(2, '0')}${String(d.getSeconds()).padStart(2, '0')}.png`);
+    fs.writeFileSync(f, Buffer.from(String(dataUrl).replace(/^data:image\/png;base64,/, ''), 'base64'));
+    if (!process.env.FELIX_PICTURES) shell.showItemInFolder(f);
+    return say('Щёлк! Селфи в «Изображениях», папка «Феликс».', { emotion: 'happy' });
+  } catch (e) { log('selfie', e.message); return say('Не получилось сохранить снимок.'); }
+}
+let pettedAt = 0;
+function onPetted() { if (Date.now() - pettedAt < 15000) return; pettedAt = Date.now(); say(brain.pick(brain.SAY.petted), { anim: 'shy', emotion: 'shy' }); }
+
+// ---------------------------------------------------------------- игры: камень-ножницы-бумага, угадай число, загадки
+let pendingGame = null;
+const RPS = [['камень', /камен|камн/], ['ножницы', /ножниц/], ['бумага', /бумаг/]];
+function startGame(p) {
+  let kind = p.intent.split('.')[1];
+  if (kind === 'any') kind = ['rps', 'guess', 'riddle'][Math.floor(Math.random() * 3)];
+  if (kind === 'rps') {
+    pendingGame = { type: 'rps', until: Date.now() + 20000 };
+    startListening(14);
+    return say('Камень, ножницы, бумага — раз, два, три! Говори, что выбрал.', { anim: 'listen' });
+  }
+  if (kind === 'guess') {
+    const from = Math.min(p.from || 1, p.to || 100), to = Math.max(p.from || 1, p.to || 100);
+    pendingGame = { type: 'guess', n: from + Math.floor(Math.random() * (to - from + 1)), tries: 0, until: Date.now() + 40000 };
+    startListening(14);
+    return say(`Загадал число от ${from} до ${to}. Угадывай! Я подскажу: больше или меньше.`, { emotion: 'happy' });
+  }
+  const r = brain.SAY.riddles[Math.floor(Math.random() * brain.SAY.riddles.length)];
+  pendingGame = { type: 'riddle', q: r[0], a: r[1], tries: 0, until: Date.now() + 40000 };
+  startListening(16);
+  return say(`Загадка! ${r[0]}`, { anim: 'think' });
+}
+/** Ответ в игре; false — это была не игра (обычная команда), игра отменяется */
+async function gameAnswer(t, p) {
+  const g = pendingGame, giveUp = /(сдаюсь|не знаю|подскажи|какой ответ|скажи ответ|хватит|стоп игра)/.test(t);
+  if (g.type === 'rps') {
+    const mine = RPS.find(([, re]) => re.test(t));
+    if (!mine) { if (p.intent !== 'unknown') { pendingGame = null; return false; } startListening(10); return say('Камень, ножницы или бумага?'); }
+    pendingGame = null;
+    const fx = RPS[Math.floor(Math.random() * 3)][0], you = mine[0];
+    const beats = { камень: 'ножницы', ножницы: 'бумага', бумага: 'камень' };
+    if (fx === you) return say(`У меня тоже ${fx}! Ничья. Ещё разок? Скажи «камень, ножницы, бумага».`, { emotion: 'happy' });
+    if (beats[fx] === you) return say(`У меня ${fx}! Я выиграл! Реванш?`, { anim: 'happy', emotion: 'happy' });
+    return say(`У меня ${fx}… Ты победил! Везёт тебе — это всё мой клевер.`, { anim: 'shy', emotion: 'shy' });
+  }
+  if (g.type === 'guess') {
+    if (giveUp) { pendingGame = null; return say(`Я загадал ${g.n}. В следующий раз получится!`); }
+    const m = brain.wordsToDigits(t).match(/\d+/);
+    if (!m) { if (p.intent !== 'unknown') { pendingGame = null; return false; } startListening(12); return say('Назови число!'); }
+    const n = +m[0]; g.tries++; g.until = Date.now() + 40000;
+    if (n === g.n) { pendingGame = null; return say(`Да! Это ${g.n}! Угадал за ${g.tries} ${brain.plural(g.tries, 'попытку', 'попытки', 'попыток')}.`, { anim: 'happy', emotion: 'happy' }); }
+    startListening(12);
+    return say(`${n}? Моё число ${n < g.n ? 'больше' : 'меньше'}.`);
+  }
+  if (g.type === 'riddle') {
+    if (giveUp) { pendingGame = null; return say(`Ответ: ${g.a[0]}. Хочешь ещё загадку?`); }
+    if (g.a.some(a => t.includes(a))) { pendingGame = null; return say(`Правильно, ${g.a[0]}! Ты молодец.`, { anim: 'happy', emotion: 'happy' }); }
+    if (p.intent !== 'unknown' && p.intent !== 'chat.help') { pendingGame = null; return false; }
+    g.tries++;
+    if (g.tries >= 2) { pendingGame = null; return say(`Почти! Ответ: ${g.a[0]}.`); }
+    startListening(14);
+    return say('Не-а! Подумай ещё. Или скажи «сдаюсь».', { anim: 'think' });
+  }
+  return false;
+}
+
+// ---------------------------------------------------------------- помидор: 25 минут работы, 5 — отдых (каждый четвёртый — 15)
+let pomo = null;
+function pomodoroStart() {
+  if (pomo) return pomodoroLeft();
+  pomo = { round: 1, phase: 'work', until: 0, t: null };
+  const next = () => {
+    const work = pomo.phase === 'work', min = work ? 25 : pomo.round % 4 === 0 ? 15 : 5;
+    pomo.until = Date.now() + min * 60000;
+    pomo.t = setTimeout(() => {
+      if (!pomo) return;
+      send(W.assistant, 'chime');
+      if (pomo.phase === 'work') { pomo.phase = 'rest'; say(pomo.round % 4 === 0 ? 'Четыре помидора позади! Большой перерыв — 15 минут. Ты молодец.' : 'Помидор готов! Перерыв 5 минут: встань, разомнись, попей воды.', { anim: 'stretch', emotion: 'happy' }); }
+      else { pomo.phase = 'work'; pomo.round++; say(`Перерыв окончен. Помидор номер ${pomo.round}: 25 минут работаем!`); }
+      next();
+    }, min * 60000);
+  };
+  next();
+  return say('Помидор запущен: 25 минут работаем, потом перерыв — я скажу. Остановить: «стоп помидор».', { emotion: 'happy' });
+}
+function pomodoroStop() { if (!pomo) return say('Помидор и не был запущен.'); clearTimeout(pomo.t); const r = pomo.round; pomo = null; return say(`Помидор остановлен. Помидоров за сегодня: ${r}.`); }
+function pomodoroLeft() {
+  if (!pomo) return say('Помидор не запущен. Скажи «запусти помидор».');
+  const min = Math.max(1, Math.round((pomo.until - Date.now()) / 60000));
+  return say(`${pomo.phase === 'work' ? 'До перерыва' : 'До конца перерыва'} ${min} ${brain.plural(min, 'минута', 'минуты', 'минут')}. Помидор номер ${pomo.round}.`);
+}
+
+// ---------------------------------------------------------------- напоминания: вода и разминка (только когда человек за компьютером)
+const remindTimers = {};
+const REMIND = {
+  water: { every: 60, lines: ['Время попить воды! Один стакан — и ты бодрее.', 'Глоток воды? Самое время.', 'Напоминаю про воду. Я бы тоже выпил, но я из пикселей.'], on: 'Хорошо, раз в час напомню попить воды.', off: 'Больше не напоминаю про воду.' },
+  stretch: { every: 50, lines: ['Давай разомнёмся! Встань, потянись — вот так.', 'Пора размяться: плечи, шея, пара шагов по комнате.', 'Пятьдесят минут за компьютером! Разминка, за мной!'], on: 'Договорились: каждые 50 минут зову размяться.', off: 'Больше не зову размяться.' }
+};
+function startReminders() {
+  for (const k of Object.keys(REMIND)) {
+    clearInterval(remindTimers[k]); delete remindTimers[k];
+    if (!(cfg.get().remind || {})[k]) continue;
+    remindTimers[k] = setInterval(() => {
+      if (powerMonitor.getSystemIdleTime() > 300 || idlePlaying || cfg.get().assistant.minimized) return;   // никого нет — не говорим в пустую комнату
+      say(brain.pick(REMIND[k].lines), { anim: k === 'stretch' ? 'stretch' : 'happy', emotion: 'happy' });
+    }, REMIND[k].every * 60000);
+  }
+}
+function setReminder(kind, on) {
+  cfg.patch({ remind: { [kind]: !!on } });
+  startReminders();
+  broadcastWardrobe();
+  return say(on ? REMIND[kind].on : REMIND[kind].off);
+}
+
 // ---------------------------------------------------------------- окно «Телефон»: экран телефона на компьютере, кнопки, приложения, дела
 function openPhonePanel() {
   if (W.phone && !W.phone.isDestroyed()) { W.phone.show(); W.phone.focus(); return; }
@@ -1304,6 +1568,7 @@ async function applyConfig(patch) {
   }
   if (patch.autostart !== undefined && app.isPackaged) setAutostart(c.autostart);
   if (patch.phone && patch.phone.enabled !== undefined) { if (c.phone.enabled) { startLink(); phoneStatusChanged(); } else stopLink(); }
+  if (patch.remind) startReminders();
   return c;
 }
 function sttModel() { return path.join(HOME, 'stt', 'vosk-model-small-ru-0.22'); }
@@ -1374,6 +1639,17 @@ function wireIpc() {
   ipcMain.handle('sound', (e, name) => fileUrl(path.join(HOME, 'sounds', String(name).replace(/[^\w-]/g, '') + '.wav')));
   ipcMain.handle('model', () => fileUrl(path.join(HOME, 'models', 'felix.vrm')));
   ipcMain.handle('felix:clicked', () => callFelix());
+  ipcMain.handle('felix:petted', () => onPetted());
+  ipcMain.handle('felix:selfie', (e, dataUrl) => saveSelfie(dataUrl));
+  // гардероб из настроек: те же анимации, что и голосом
+  ipcMain.handle('wardrobe:catalog', () => WCAT);
+  ipcMain.handle('wardrobe:set', (e, kind, id) => {
+    if (kind === 'outfit') return changeOutfit(String(id));
+    if (kind === 'wear') return wearItem(String(id));
+    if (kind === 'off') return takeOff({ id: String(id) });
+    if (kind === 'weather') return dressForWeather();
+  });
+  ipcMain.handle('remind:set', (e, kind, on) => { cfg.patch({ remind: { [kind]: !!on } }); startReminders(); return cfg.get().remind; });
   ipcMain.handle('felix:spoken', () => onSpoken());
   ipcMain.handle('felix:minimize', (e, m) => setMinimized(m));
   ipcMain.handle('felix:idle-done', () => endIdle());
@@ -1466,10 +1742,14 @@ app.whenReady().then(async () => {
   screen.on('display-added', () => setTimeout(layoutAssistant, 300));
   screen.on('display-removed', () => setTimeout(layoutAssistant, 300));
   startIdleWatch();
+  startReminders();
 
   if (!cfg.get().firstRun) setTimeout(() => {
     if (!cfg.get().assistant.minimized && !ARGS.includes('--silent')) say(brain.pick(brain.SAY.greetBoot(nick())), { anim: 'wave', emotion: 'happy' });
   }, 5000);
+  // праздничная вещь — после приветствия; и раз в час (если Феликс работает в полночь)
+  setTimeout(() => { if (!cfg.get().firstRun) holidayCheck(); }, 11000);
+  setInterval(() => { if (!cfg.get().firstRun && powerMonitor.getSystemIdleTime() < 300) holidayCheck(); }, 3600000);
 });
 
 app.on('window-all-closed', e => e.preventDefault?.());

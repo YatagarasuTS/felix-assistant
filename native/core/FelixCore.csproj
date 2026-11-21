@@ -16,7 +16,7 @@
     <Product>Felix</Product>
     <Company>Felix</Company>
     <AssemblyTitle>Felix helper</AssemblyTitle>
-    <Version>1.1.0</Version>
+    <Version>1.2.0</Version>
     <DebugType>none</DebugType>
   </PropertyGroup>
   <ItemGroup>

@@ -47,7 +47,8 @@ export const ICONS = {
   folder: '<path d="M3 6.5A1.5 1.5 0 0 1 4.5 5h4.6l2 2.2h8.4A1.5 1.5 0 0 1 21 8.7v9.8a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18.5z"/>',
   check: '<path d="m5 12.5 4.5 4.5L19 7.5"/>',
   phone: '<rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/>',
-  play: '<path d="M8 5.5v13l11-6.5z"/>'
+  play: '<path d="M8 5.5v13l11-6.5z"/>',
+  shirt: '<path d="M9 3.5 4.5 6 3 10.5l3.2 1.2L7.5 9.5V20.5h9V9.5l1.3 2.2 3.2-1.2L19.5 6 15 3.5a3 3 0 0 1-6 0z"/>'
 };
 export const svg = (name, cls = 'ico', vb = '0 0 24 24') => `<svg class="${cls}" viewBox="${vb}">${ICONS[name] || ''}</svg>`;
 export const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));

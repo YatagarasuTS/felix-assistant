@@ -1,0 +1,41 @@
+{
+  "_": "Гардероб Феликса: наряды (меняются за ширмой) и аксессуары (надеваются руками). Один источник для программы, настроек и роликов. say — основы слов для голосовых команд.",
+  "outfits": [
+    { "id": "mint", "name": "Мятное худи", "short": "мятное", "say": ["мят", "бирюз", "обычн", "классич", "родн", "стандартн"], "main": "#9fd9dd", "drip": "#26303f", "pants": null, "shoes": null, "pattern": null, "swatch": ["#9fd9dd", "#26303f"] },
+    { "id": "midnight", "name": "Полночь", "short": "ночное", "say": ["полноч", "ночн", "черн", "темн"], "main": "#273142", "drip": "#2ed3c0", "pants": ["#10141c", "#3a4252"], "shoes": "#2ed3c0", "pattern": null, "swatch": ["#273142", "#2ed3c0"] },
+    { "id": "sakura", "name": "Сакура", "short": "розовое", "say": ["сакур", "розов"], "main": "#ffa8c8", "drip": "#8a2f5c", "pants": ["#2b2230", "#6a5a72"], "shoes": "#ffa8c8", "pattern": "petals", "swatch": ["#ffa8c8", "#8a2f5c"] },
+    { "id": "sunset", "name": "Закат", "short": "оранжевое", "say": ["закат", "оранж", "рыж"], "main": "#ff9a4d", "drip": "#5a2a12", "pants": ["#4a3a2a", "#c8b090"], "shoes": "#ff9a4d", "pattern": null, "swatch": ["#ff9a4d", "#5a2a12"] },
+    { "id": "lemon", "name": "Лимонад", "short": "жёлтое", "say": ["лимон", "желт"], "main": "#ffe066", "drip": "#2b3a55", "pants": ["#1c2a48", "#5c7fb8"], "shoes": "#ffe066", "pattern": null, "swatch": ["#ffe066", "#2b3a55"] },
+    { "id": "forest", "name": "Лесной камуфляж", "short": "камуфляж", "say": ["лесн", "камуфл", "зелен", "военн", "хаки"], "main": "#6f9454", "drip": "#2f3b24", "pants": ["#2e2e1e", "#8f8a60"], "shoes": "#6f9454", "pattern": "camo", "swatch": ["#6f9454", "#3e5b2f"] },
+    { "id": "cosmos", "name": "Космос", "short": "космическое", "say": ["космо", "космич", "фиолет", "галакт"], "main": "#4a33a0", "drip": "#120f30", "pants": ["#0e1020", "#3a3f66"], "shoes": "#9a8cff", "pattern": "stars", "swatch": ["#4a33a0", "#120f30"] },
+    { "id": "snow", "name": "Снежный", "short": "белое", "say": ["снеж", "бел", "зимн"], "main": "#f1f6f9", "drip": "#6fbfe8", "pants": ["#3a4656", "#a9b6c6"], "shoes": "#6fbfe8", "pattern": "snow", "swatch": ["#f1f6f9", "#6fbfe8"] },
+    { "id": "fire", "name": "Огненный", "short": "красное", "say": ["огн", "красн", "пламен"], "main": "#ec4245", "drip": "#1a1a1a", "pants": ["#101010", "#3a3a3a"], "shoes": "#ec4245", "pattern": null, "swatch": ["#ec4245", "#1a1a1a"] },
+    { "id": "denim", "name": "Джинсовый", "short": "джинсовое", "say": ["джинс", "синее", "синий", "синюю"], "main": "#4f75ad", "drip": "#efe7d2", "pants": ["#1c2a48", "#5c7fb8"], "shoes": "#efe7d2", "pattern": "denim", "swatch": ["#4f75ad", "#efe7d2"] }
+  ],
+  "accessories": [
+    { "id": "headphones", "name": "Наушники", "acc": "наушники", "slot": "ears", "emoji": "🎧", "say": ["наушник", "гарнитур"] },
+    { "id": "beanie", "name": "Шапка", "acc": "шапку", "slot": "head", "emoji": "🧶", "say": ["шапк", "шапочк", "вязан"] },
+    { "id": "cap", "name": "Кепка", "acc": "кепку", "slot": "head", "emoji": "🧢", "say": ["кепк", "бейсболк"] },
+    { "id": "crown", "name": "Корона", "acc": "корону", "slot": "head", "emoji": "👑", "say": ["корон", "королев"] },
+    { "id": "wizard", "name": "Шляпа волшебника", "acc": "шляпу волшебника", "slot": "head", "emoji": "🧙", "say": ["волшебн", "колдун", "маг", "ведьм"] },
+    { "id": "party", "name": "Праздничный колпак", "acc": "праздничный колпак", "slot": "head", "emoji": "🥳", "say": ["колпак", "праздничн", "вечеринк"] },
+    { "id": "santa", "name": "Новогодний колпак", "acc": "новогодний колпак", "slot": "head", "emoji": "🎅", "say": ["новогодн", "санта", "дед мороз", "деда мороз"] },
+    { "id": "cowboy", "name": "Ковбойская шляпа", "acc": "ковбойскую шляпу", "slot": "head", "emoji": "🤠", "say": ["ковбо", "шериф"] },
+    { "id": "tophat", "name": "Цилиндр", "acc": "цилиндр", "slot": "head", "emoji": "🎩", "say": ["цилиндр", "шляп"] },
+    { "id": "catears", "name": "Кошачьи ушки", "acc": "кошачьи ушки", "slot": "head", "emoji": "🐱", "say": ["ушк", "кошач", "котик", "неко"] },
+    { "id": "halo", "name": "Нимб", "acc": "нимб", "slot": "head", "emoji": "😇", "say": ["нимб", "ангел"] },
+    { "id": "horns", "name": "Рожки", "acc": "рожки", "slot": "head", "emoji": "😈", "say": ["рожк", "рога", "демон", "черт"] },
+    { "id": "wreath", "name": "Венок", "acc": "венок", "slot": "head", "emoji": "🌸", "say": ["венок", "венк", "цветоч", "цветы"] },
+    { "id": "glasses", "name": "Очки", "acc": "очки", "slot": "face", "emoji": "👓", "say": ["очк", "очеч"] },
+    { "id": "sunglasses", "name": "Солнечные очки", "acc": "солнечные очки", "slot": "face", "emoji": "🕶️", "say": ["солнечн", "темные очки", "крут"] },
+    { "id": "starglasses", "name": "Звёздные очки", "acc": "звёздные очки", "slot": "face", "emoji": "🤩", "say": ["звездн", "звезд"] },
+    { "id": "scarf", "name": "Шарф", "acc": "шарф", "slot": "neck", "emoji": "🧣", "say": ["шарф"] },
+    { "id": "bowtie", "name": "Бабочка", "acc": "бабочку", "slot": "neck", "emoji": "🎀", "say": ["бабочк", "галстук"] },
+    { "id": "medal", "name": "Медаль", "acc": "медаль", "slot": "neck", "emoji": "🏅", "say": ["медал", "наград"] },
+    { "id": "wings", "name": "Крылья", "acc": "крылья", "slot": "back", "emoji": "🕊️", "say": ["крыл"] },
+    { "id": "backpack", "name": "Рюкзак", "acc": "рюкзак", "slot": "back", "emoji": "🎒", "say": ["рюкзак", "портфел"] },
+    { "id": "umbrella", "name": "Зонт", "acc": "зонт", "slot": "hand", "emoji": "☂️", "say": ["зонт"] },
+    { "id": "balloon", "name": "Воздушный шарик", "acc": "воздушный шарик", "slot": "hand", "emoji": "🎈", "say": ["шарик", "воздушн"] }
+  ],
+  "slots": { "head": "голова", "face": "лицо", "neck": "шея", "back": "спина", "hand": "в руке", "ears": "уши" }
+}

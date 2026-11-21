@@ -30,6 +30,7 @@ if (PHONE_ON) { cfg.data.phone.enabled = true; cfg.data.phone.services = { food:
 
 // SHOT_HALF=1 — окно вдвое меньше при плотности 2×: так снимаются страницы выше экрана (Windows не даёт окну быть выше него)
 const HALF = !!process.env.SHOT_HALF;
+app.setPath('userData', path.join(app.getPath('temp'), 'felix-shot-ud'));   // своя папка: Chromium запоминает масштаб страниц
 if (HALF) app.commandLine.appendSwitch('force-device-scale-factor', '2');
 protocol.registerSchemesAsPrivileged([{ scheme: 'felix', privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true } }]);
 app.whenReady().then(async () => {
@@ -51,7 +52,9 @@ app.whenReady().then(async () => {
     battery: PHONE_ON ? { level: 82, charging: false } : null, code: 'K7QM2XWP', addresses: [{ name: 'Ethernet', address: '192.168.0.10' }], apkPort: 47892, apk: true, wol: null, control: PHONE_ON
   }));
   ipcMain.handle('phone:fwstatus', () => false);
-  ipcMain.handle('phone:catalog', () => Object.fromEntries(phoneapps.KINDS.map(k => { const c = phoneapps.CATS[k]; return [k, { name: c.name, icon: c.icon, apps: [] }]; })));
+  ipcMain.handle('wardrobe:catalog', () => JSON.parse(fs.readFileSync(path.join(APP, 'ui', 'wardrobe-catalog.json'), 'utf8')));
+  ipcMain.handle('wardrobe:set', () => null);
+  ipcMain.handle('phone:catalog',() => Object.fromEntries(phoneapps.KINDS.map(k => { const c = phoneapps.CATS[k]; return [k, { name: c.name, icon: c.icon, apps: [] }]; })));
   ipcMain.handle('phone:apps', () => (PHONE_ON ? FAKE_APPS : null));
   ipcMain.handle('phone:suggest', () => Object.fromEntries(phoneapps.KINDS.map(k => [k, phoneapps.suggest(k, FAKE_APPS)])));
   ipcMain.handle('phone:cmd', (e, c) => {
@@ -77,6 +80,7 @@ async function shoot(j) {
     // «settings.html#phone» — открыть раздел настроек (сообщением goto, как это делает сам Феликс)
     const [page, section] = j.page.split('#');
     await w.loadURL(page.startsWith('/') ? 'felix://file/' + path.join(ROOT, page).replace(/\\/g, '/') : 'felix://app/ui/' + page);
+    w.webContents.setZoomFactor(1 / k);
     if (section) setTimeout(() => w.webContents.send('goto', section), 400);
     if (/^call/.test(j.page)) setTimeout(() => w.webContents.send('call', { state: 'ringing', name: 'Мама', number: '+7 900 000-00-00', incoming: true }), 600);
     await new Promise(r => setTimeout(r, j.delay));

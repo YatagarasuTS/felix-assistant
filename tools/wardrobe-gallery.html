@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Гардероб Феликса — проверка</title>
+<!-- Проверочная сетка: каждая вещь на голове/лице/шее/спине, наряды целиком, позы надевания.
+     electron tools\shot.js <папка> "/tools/wardrobe-gallery.html?mode=acc" 1600 1000 9000   (mode: acc | outfits | poses | screen) -->
+<style> html, body { margin: 0; background: #0b1416; } canvas#out { display: block; } </style>
+</head>
+<body>
+<canvas id="out"></canvas>
+<script type="importmap">{ "imports": { "three": "felix://app/ui/vendor/three.module.js" } }</script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'felix://app/ui/vendor/loaders/GLTFLoader.js';
+import { VRMLoaderPlugin, VRMUtils } from 'felix://app/ui/vendor/three-vrm.module.js';
+import * as WR from 'felix://app/ui/wardrobe3d.js';
+
+const Q = new URLSearchParams(location.search), MODE = Q.get('mode') || 'acc';
+const CAT = await (await fetch('felix://app/ui/wardrobe-catalog.json')).json(); WR.setCatalog(CAT);
+const TW = MODE === 'outfits' || MODE === 'poses' || MODE === 'screen' ? 300 : 260, TH = MODE === 'acc' ? 260 : 420;
+const r = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true }); r.setPixelRatio(1); r.setSize(TW, TH);
+const scene = new THREE.Scene();
+const key = new THREE.DirectionalLight(0xffffff, Math.PI * 0.9); key.position.set(0.6, 1.2, 1.6); scene.add(key);
+const rim = new THREE.DirectionalLight(0x4fe3d0, 1.0); rim.position.set(-1, 0.6, -0.6); scene.add(rim);
+scene.add(new THREE.AmbientLight(0xffffff, 0.35));
+const loader = new GLTFLoader(); loader.register(p => new VRMLoaderPlugin(p));
+const gltf = await loader.loadAsync(new URL('../stage/models/felix.vrm', location.href).href);
+const vrm = gltf.userData.vrm; VRMUtils.removeUnnecessaryVertices(gltf.scene); VRMUtils.combineSkeletons && VRMUtils.combineSkeletons(gltf.scene);
+vrm.scene.traverse(o => { o.frustumCulled = false; });
+const root = new THREE.Group(); root.add(vrm.scene); scene.add(root);
+const N = n => vrm.humanoid.getNormalizedBoneNode(n);
+const BONES = ['hips', 'spine', 'chest', 'upperChest', 'neck', 'head', 'leftUpperArm', 'rightUpperArm', 'leftLowerArm', 'rightLowerArm', 'leftHand', 'rightHand', 'leftUpperLeg', 'rightUpperLeg'];
+function pose(slot, raise, hold) {
+  const t = {}; for (const b of BONES) t[b] = { x: 0, y: 0, z: 0 };
+  t.leftUpperArm = { x: 0, y: 0, z: -1.25 }; t.rightUpperArm = { x: 0, y: 0, z: 1.25 };
+  t.leftLowerArm = { x: 0, y: -0.2, z: -0.1 }; t.rightLowerArm = { x: 0, y: 0.2, z: 0.1 };
+  t.leftUpperLeg = { x: 0, y: 0, z: 0.035 }; t.rightUpperLeg = { x: 0, y: 0, z: -0.035 };
+  if (hold) WR.holdPose(t);
+  if (slot) WR.wearPose(t, slot, raise);
+  for (const b of BONES) { const n = N(b); if (n) n.rotation.set(t[b].x, t[b].y, t[b].z); }
+  vrm.update(0); vrm.scene.updateMatrixWorld(true);
+}
+const hp = new THREE.Vector3();
+function cam(kind, yaw) {
+  root.rotation.y = yaw || 0; root.updateMatrixWorld(true);
+  vrm.humanoid.getRawBoneNode('head').getWorldPosition(hp);
+  const c = kind === 'head' ? { cy: hp.y + 0.06, half: 0.32 } : kind === 'bust' ? { cy: hp.y - 0.15, half: 0.55 } : { cy: 0.95, half: 1.05 };
+  const asp = TW / TH, o = new THREE.OrthographicCamera(-c.half * asp, c.half * asp, c.half, -c.half, 0.01, 50);
+  o.position.set(0, c.cy, 10); return o;
+}
+const out = document.getElementById('out'), X = out.getContext('2d');
+const tiles = [];
+function shot(label, kind, yaw) {
+  const c = cam(kind, yaw); r.render(scene, c);
+  const im = document.createElement('canvas'); im.width = TW; im.height = TH; im.getContext('2d').drawImage(r.domElement, 0, 0);
+  tiles.push([im, label]);
+}
+const worn = [];
+const wear = id => { const m = WR.makeAccessory(id); WR.attachAccessory(vrm, m); worn.push(m); WR.updateAccessories(vrm, 1); return m; };
+const strip = () => { worn.splice(0).forEach(m => m.removeFromParent()); };
+
+if (MODE === 'acc') {
+  const part = Number(Q.get('part') || 0), per = Number(Q.get('per') || 9);
+  for (const a of CAT.accessories.slice(part * per, part * per + per)) {
+    const hold = a.slot === 'hand';
+    pose(null, 0, hold); wear(a.id); WR.updateAccessories(vrm, 1);
+    const kind = a.slot === 'head' || a.slot === 'face' || a.slot === 'ears' ? 'head' : a.slot === 'neck' ? 'bust' : 'full';
+    shot(a.name, kind, 0);
+    if (a.slot !== 'face') shot(a.name + ' (бок)', kind, a.slot === 'back' ? Math.PI * 0.8 : 1.2);
+    strip();
+  }
+} else if (MODE === 'showcase') {
+  // витрина для README: вещи спереди, крупно
+  for (const id of ['crown', 'wizard', 'santa', 'cowboy', 'catears', 'halo', 'party', 'tophat', 'horns', 'wreath', 'sunglasses', 'starglasses']) {
+    pose(null, 0); wear(id); WR.updateAccessories(vrm, 1); shot(CAT.accessories.find(a => a.id === id).name, 'head', 0.25); strip();
+  }
+} else if (MODE === 'item') {
+  // одна вещь со всех сторон: ?mode=item&id=cape
+  const id = Q.get('id') || 'wings', a = CAT.accessories.find(x => x.id === id);
+  for (const t of [0.92, 2.77]) {          // крайние точки качания (sin = +1 и −1)
+    pose(null, 0, a.slot === 'hand'); wear(id); WR.updateAccessories(vrm, t);
+    for (const [yaw, nm] of [[0, 'спереди'], [Math.PI / 2, 'сбоку'], [Math.PI, 'сзади']]) shot(`${a.name} ${nm} t=${t}`, 'full', yaw);
+    strip();
+  }
+} else if (MODE === 'outfits') {
+  pose(null, 0); wear('headphones');
+  for (const o of CAT.outfits) { WR.applyOutfit(vrm, o); shot(o.name, 'full', 0.25); }
+} else if (MODE === 'poses') {
+  for (const s of ['head', 'face', 'neck', 'back', 'hand']) for (const k of [0.5, 1]) { pose(s, k, s === 'hand'); shot(s + ' ' + k, 'full', 0.3); }
+} else if (MODE === 'screen') {
+  const scr = WR.makeScreen(); scene.add(scr);
+  const cloth = WR.makeCloth('#9fd9dd'); scene.add(cloth);
+  for (const k of [0.06, 0.2, 0.3, 0.44, 0.55, 0.7, 0.9, 0.97]) {
+    const S = WR.outfitStep(k, -1);
+    pose(null, 0); scr.userData.set(S.screenOpen); scr.position.set(-0.62, 0, 0.06);
+    root.position.set(S.offX, 0, S.offZ); root.rotation.y = S.facing;
+    cloth.visible = !!S.cloth; if (S.cloth) { cloth.position.set(S.cloth.x, S.cloth.y, S.cloth.z); cloth.rotation.set(S.cloth.rx, 0, S.cloth.rz); cloth.scale.setScalar(Math.max(0.001, S.cloth.scale)); }
+    const c = new THREE.OrthographicCamera(-1.3 * TW / TH, 1.3 * TW / TH, 1.3, -1.3, 0.01, 50); c.position.set(-0.3, 1.0, 10);
+    r.render(scene, c);
+    const im = document.createElement('canvas'); im.width = TW; im.height = TH; im.getContext('2d').drawImage(r.domElement, 0, 0); tiles.push([im, 'k=' + k]);
+  }
+}
+const cols = Math.floor(1600 / TW), rows = Math.ceil(tiles.length / cols);
+out.width = cols * TW; out.height = rows * (TH + 22);
+X.fillStyle = '#0b1416'; X.fillRect(0, 0, out.width, out.height);
+tiles.forEach(([im, label], i) => {
+  const x = (i % cols) * TW, y = Math.floor(i / cols) * (TH + 22);
+  X.fillStyle = i % 2 ? '#13262a' : '#102024'; X.fillRect(x, y, TW, TH);
+  X.drawImage(im, x, y); X.fillStyle = '#cfe'; X.font = '14px Segoe UI'; X.fillText(label, x + 8, y + TH + 16);
+});
+document.title = 'ready';
+window.galleryReady = true;
+</script>
+</body>
+</html>
