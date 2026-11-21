@@ -1094,8 +1094,9 @@ async function phoneHandle(p) {
     }
     case 'phone.shop': {
       if (!p.query) return say('Что найти?');
+      if (!phoneReady()) return;
       const pkg = phoneapps.storePkg(p.store);
-      if (pkg && phoneReady()) {
+      if (pkg) {
         const list = await phoneAppList();
         if (list && list.some(a => a.pkg === pkg)) return phoneService('shop', { query: p.query, pkg });
         if (list) await say(`${phoneapps.knownName(pkg)} на телефоне не нашёл — ищу в твоём магазине.`);
