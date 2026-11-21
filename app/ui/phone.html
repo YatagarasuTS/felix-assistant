@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Феликс — телефон</title>
+<link rel="stylesheet" href="common.css">
+<style>
+  .main { flex: 1; display: flex; min-height: 0; }
+  .left { flex: none; display: flex; flex-direction: column; align-items: center; padding: 14px 16px 12px; border-right: 1px solid var(--line); gap: 10px; }
+  .screen { position: relative; flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; outline: none; }
+  .frame { position: relative; height: 100%; aspect-ratio: var(--ar, 0.4615); max-width: 100%; border-radius: 30px; padding: 9px; background: linear-gradient(160deg, #2b3438, #101619); box-shadow: 0 0 0 1px var(--line2), 0 18px 50px rgba(0,0,0,.45); }
+  .frame.focus { box-shadow: 0 0 0 2px var(--accent), 0 18px 50px rgba(0,0,0,.45); }
+  .glassScr { position: relative; width: 100%; height: 100%; border-radius: 22px; overflow: hidden; background: #050a0b; display: grid; place-items: center; }
+  #img { width: 100%; height: 100%; object-fit: contain; display: none; user-select: none; -webkit-user-drag: none; cursor: pointer; }
+  #msg { padding: 26px; text-align: center; color: var(--dim); line-height: 1.5; font-size: 13.5px; }
+  #msg b { display: block; color: var(--text); font: 650 16px var(--display); margin-bottom: 8px; }
+  #msg .btn { margin-top: 14px; }
+  .ripple { position: absolute; width: 34px; height: 34px; margin: -17px 0 0 -17px; border-radius: 50%; border: 2px solid var(--accent2); pointer-events: none; animation: rip .45s ease-out forwards; }
+  @keyframes rip { from { transform: scale(.4); opacity: 1; } to { transform: scale(1.6); opacity: 0; } }
+  .live { position: absolute; left: 50%; top: 16px; transform: translateX(-50%); padding: 3px 10px; border-radius: 20px; background: rgba(0,0,0,.55); color: #cfe; font-size: 11px; display: none; align-items: center; gap: 6px; pointer-events: none; }
+  .live i { width: 7px; height: 7px; border-radius: 50%; background: #ef4444; }
+  .tools { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+  .tools button { width: 40px; height: 36px; border-radius: 10px; display: grid; place-items: center; color: var(--dim); background: var(--line); }
+  .tools button:hover { color: var(--text); background: var(--line2); }
+  .tools button.wide { width: 52px; }
+  .tools .sep { width: 8px; }
+  .hint { color: var(--dim); font-size: 11.5px; text-align: center; max-width: 360px; }
+  .right { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .tabs { display: flex; gap: 4px; padding: 12px 16px 0; border-bottom: 1px solid var(--line); }
+  .tabs button { padding: 9px 14px; border-radius: 10px 10px 0 0; color: var(--dim); font-weight: 600; display: flex; gap: 8px; align-items: center; }
+  .tabs button.sel { color: var(--text); background: color-mix(in srgb, var(--accent) 16%, transparent); box-shadow: inset 0 -2px 0 var(--accent); }
+  .pane { flex: 1; overflow: auto; padding: 16px 18px 24px; display: none; user-select: text; }
+  .pane.sel { display: block; }
+  .task { display: grid; grid-template-columns: 40px 1fr; gap: 6px 12px; padding: 12px; border-radius: 14px; background: var(--line); margin-bottom: 10px; }
+  .task .em { grid-row: span 2; width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; font: 22px 'Segoe UI Emoji'; background: color-mix(in srgb, var(--accent) 18%, transparent); }
+  .task .nm { font-weight: 650; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+  .task .nm small { color: var(--dim); font-weight: 400; font-size: 12px; }
+  .task .nm a { color: var(--accent2); cursor: pointer; font-weight: 400; font-size: 12px; }
+  .task .go { display: flex; gap: 8px; }
+  .task .go .inp { flex: 1; min-width: 0; }
+  .task .go .btn { padding: 8px 12px; white-space: nowrap; }
+  #appq { width: 100%; margin-bottom: 12px; }
+  .apps { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 6px; }
+  .app { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 4px 8px; border-radius: 12px; text-align: center; font-size: 11.5px; line-height: 1.2; }
+  .app:hover { background: var(--line); }
+  .app img, .app .ph { width: 42px; height: 42px; border-radius: 11px; }
+  .app .ph { background: var(--line2); }
+  .app span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  textarea.inp { width: 100%; min-height: 120px; resize: vertical; }
+  .row2 { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  .note { color: var(--dim); font-size: 12px; line-height: 1.5; margin-top: 14px; }
+  .toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); padding: 9px 16px; border-radius: 12px; background: var(--panel-solid); border: 1px solid var(--line2); box-shadow: var(--glow); opacity: 0; transition: opacity .2s; pointer-events: none; max-width: 80%; text-align: center; }
+  .toast.on { opacity: 1; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="titlebar">
+    <span class="logo" id="logo"></span><span class="t" id="title">Телефон</span>
+    <button id="bmin" title="Свернуть"></button><button id="bclose" class="x" title="Закрыть"></button>
+  </div>
+  <div class="main">
+    <div class="left" id="left">
+      <div class="screen" id="screen" tabindex="0">
+        <div class="frame" id="frame"><div class="glassScr">
+          <img id="img" alt="Экран телефона" draggable="false">
+          <div id="msg"></div>
+          <div class="live" id="live"><i></i>экран телефона</div>
+        </div></div>
+      </div>
+      <div class="tools" id="tools"></div>
+      <div class="hint">Клик — нажатие, перетаскивание — свайп, колесо — прокрутка, правая кнопка — «Назад». Кликни по экрану и печатай — текст уйдёт в поле на телефоне.</div>
+    </div>
+    <div class="right">
+      <div class="tabs" id="tabs"></div>
+      <div class="pane" id="p-tasks"><div id="tasks"></div>
+        <div class="note">Приложение для каждого дела выбираешь ты — в настройках Феликса, раздел «Телефон». Феликс открывает его и вписывает запрос в поиск; заказ и оплату подтверждаешь сам на телефоне. Голосом: «Феликс, закажи пиццу», «вызови такси до работы», «маршрут до вокзала».</div></div>
+      <div class="pane" id="p-apps"><input class="inp" id="appq" placeholder="Найти приложение…"><div class="apps" id="apps"></div></div>
+      <div class="pane" id="p-text">
+        <textarea class="inp" id="txt" placeholder="Текст или ссылка для телефона"></textarea>
+        <div class="row2">
+          <button class="btn primary" id="tType">Вписать в поле на телефоне</button>
+          <button class="btn" id="tClip">В буфер обмена телефона</button>
+          <button class="btn" id="tUrl">Открыть ссылку на телефоне</button>
+        </div>
+        <div class="note">«Вписать в поле» — туда, где на телефоне сейчас курсор. Голосом: «Феликс, отправь текст на телефон» — уйдёт то, что скопировано на компьютере; «открой ссылку на телефоне» — откроется скопированная ссылка.</div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<script type="module" src="phone.js"></script>
+</body>
+</html>

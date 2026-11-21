@@ -1,0 +1,31 @@
+СТОРОННИЕ КОМПОНЕНТЫ ПРОГРАММЫ «ФЕЛИКС» / THIRD-PARTY NOTICES
+
+Программа «Феликс» включает перечисленные ниже компоненты. Каждый распространяется на условиях своей лицензии; полные тексты лицензий — ниже в этом файле.
+Felix includes the following third-party components, each distributed under its own license; full license texts follow.
+
+------------------------------------------------------------------------------
+Компонент                         Лицензия        Где в программе / исходный код
+------------------------------------------------------------------------------
+Electron 33.2.1                   MIT             Felix.exe, *.dll, resources — https://github.com/electron/electron
+Chromium (в составе Electron)     BSD и др.       LICENSES.chromium.html в папке программы
+three.js 0.170.0                  MIT             resources\app\ui\vendor — https://github.com/mrdoob/three.js
+@pixiv/three-vrm 3.3.3            MIT             resources\app\ui\vendor — https://github.com/pixiv/three-vrm
+Anthropic TypeScript SDK 1.12.0   Apache-2.0      resources\app\node_modules\@anthropic-ai\sdk — https://github.com/anthropics/anthropic-sdk-typescript
+  и его зависимости: standardwebhooks (MIT), fast-sha256 (Unlicense), @stablelib/base64 (MIT), json-schema-to-ts (MIT),
+  @babel/runtime (MIT), ts-algebra (MIT), @opentelemetry/api (Apache-2.0) — лицензии в папках пакетов
+Vosk API 0.3.38 (libvosk.dll)     Apache-2.0      native — https://github.com/alphacep/vosk-api
+vosk-model-small-ru-0.22          Apache-2.0      stt — https://alphacephei.com/vosk/models
+NAudio 2.2.1                      MIT             native — https://github.com/naudio/NAudio
+Piper 1.2.0                       MIT             voice\piper — https://github.com/rhasspy/piper
+eSpeak NG (piper-phonemize)       GPL-3.0         voice\piper\espeak-ng.dll, espeak-ng-data — исходный код:
+                                                  https://github.com/rhasspy/espeak-ng (сборка piper-phonemize https://github.com/rhasspy/piper-phonemize).
+                                                  eSpeak NG — отдельная программа, которую «Феликс» запускает через piper.exe.
+                                                  Исходный код этой версии можно также запросить у правообладателя «Феликса» в течение 3 лет.
+Голос Piper «Дмитрий» (ru_RU-dmitri-medium)  набор данных CC0, модель MIT   voice — https://huggingface.co/rhasspy/piper-voices
+Голос Piper «Денис» (ru_RU-denis-medium)     набор данных CC0, модель MIT   voice — https://huggingface.co/rhasspy/piper-voices
+  (в файлах .onnx.json убраны многосимвольные фонемы, чтобы голоса работали в Piper 1.2; сами модели не изменены)
+3D-модель Феликса                 VRoid Studio: материалы pixiv разрешены для коммерческого использования
+                                  (https://vroid.com/en/studio/guidelines); текстура худи перерисована.
+Звуки интерфейса                  сгенерированы программно, собственные.
+
+------------------------------------------------------------------------------

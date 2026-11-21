@@ -62,7 +62,7 @@ three.js
 ==============================================================================
 The MIT License
 
-Copyright В© 2010-2024 three.js authors
+Copyright © 2010-2024 three.js authors
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

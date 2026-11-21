@@ -1,0 +1,34 @@
+«ФЕЛИКС» — СВОБОДНАЯ ПРОГРАММА С ОТКРЫТЫМ КОДОМ (ЛИЦЕНЗИЯ MIT)
+Версия 1.1 · © 2026 YatagarasuTS и участники проекта · https://github.com/YatagarasuTS/felix-assistant
+
+Коротко, что это значит:
+• Программу можно бесплатно устанавливать и использовать где угодно — дома, на учёбе, на работе.
+• Исходный код открыт: его можно изучать, менять, собирать свою версию и распространять, в том числе в составе других программ.
+• Единственное условие лицензии — сохранять уведомление об авторских правах и текст лицензии (ниже).
+• Программа предоставляется «как есть», без гарантий.
+
+Сторонние компоненты
+В программу входят компоненты с собственными открытыми лицензиями (Electron, three.js, three-vrm, Vosk, Piper, eSpeak NG, голоса Piper, NAudio, Anthropic SDK, qrcode-generator и др.). Список и полные тексты — в файле THIRD-PARTY-NOTICES.txt.
+
+Сервисы третьих лиц
+• Ответы нейросети приходят от выбранного вами сервиса: Anthropic — через ваш собственный аккаунт (ключ API, который вы создаёте сами, на условиях Anthropic и по вашему тарифу), либо от вашей локальной модели (Ollama). Подписки claude.ai программа не использует.
+• Погода (Open-Meteo), курсы валют (ЦБ РФ), справка (Википедия) и поиск музыки запрашиваются только по вашей команде.
+• «Феликс Link» на телефоне связывается с программой только внутри вашей локальной сети; данные шифруются кодом сопряжения (AES-256-GCM).
+• Управление телефоном с компьютера: Феликс открывает выбранные вами приложения (доставка, такси, карты, магазины) и вписывает запрос. Заказы, оплату и поездки подтверждаете вы сами в этих приложениях — на их условиях.
+
+Конфиденциальность
+• Распознавание речи и синтез голоса выполняются на вашем компьютере; записи голоса не сохраняются и не передаются.
+• Ключ API вашего аккаунта Anthropic хранится на компьютере в зашифрованном виде (Windows DPAPI) и отправляется только в Anthropic.
+• Экран телефона показывается на компьютере, только пока открыто окно «Телефон», и никуда больше не передаётся.
+• Программа не собирает статистику и не показывает рекламу.
+
+------------------------------------------------------------------------------
+MIT License
+
+Copyright (c) 2026 YatagarasuTS and Felix contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.

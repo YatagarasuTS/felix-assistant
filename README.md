@@ -1,29 +1,30 @@
 <div align="center">
 
-<img src="assets/logo.png" width="148" alt="Феликс">
+<img src="docs/images/logo.png" width="148" alt="Феликс">
 
 # Феликс
 
-**Голосовой 3D-помощник для рабочего стола Windows**
+**Голосовой 3D-помощник для рабочего стола Windows — и пульт для твоего телефона**
 
 Скажи «Феликс» — он откроет программу, включит музыку, поставит таймер,<br>
-расскажет погоду и ответит на любой вопрос. А телефон станет его пультом.
+расскажет погоду, ответит на любой вопрос, закажет пиццу и вызовет такси на твоём телефоне.
 
 [![release](https://img.shields.io/github/v/release/YatagarasuTS/felix-assistant?style=flat-square&color=1FB5A3&label=release)](https://github.com/YatagarasuTS/felix-assistant/releases/latest)
 [![downloads](https://img.shields.io/github/downloads/YatagarasuTS/felix-assistant/total?style=flat-square&color=1FB5A3)](https://github.com/YatagarasuTS/felix-assistant/releases)
+[![license: MIT](https://img.shields.io/badge/license-MIT-5EF0D8?style=flat-square)](LICENSE)
 ![Windows 10 | 11](https://img.shields.io/badge/Windows%2010%20%7C%2011-x64-0E8C7E?style=flat-square&logo=windows&logoColor=white)
 ![Android 9+](https://img.shields.io/badge/Android%209%2B-Felix%20Link-0E8C7E?style=flat-square&logo=android&logoColor=white)
-![бесплатно](https://img.shields.io/badge/%D1%86%D0%B5%D0%BD%D0%B0-%D0%B1%D0%B5%D1%81%D0%BF%D0%BB%D0%B0%D1%82%D0%BD%D0%BE-5EF0D8?style=flat-square)
+![открытый код](https://img.shields.io/badge/%D0%BA%D0%BE%D0%B4-%D0%BE%D1%82%D0%BA%D1%80%D1%8B%D1%82-5EF0D8?style=flat-square)
 
 <br>
 
-<a href="https://github.com/YatagarasuTS/felix-assistant/releases/latest/download/FelixSetup-1.0.0.exe"><img src="https://img.shields.io/badge/%D0%A3%D1%81%D1%82%D0%B0%D0%BD%D0%BE%D0%B2%D1%89%D0%B8%D0%BA-FelixSetup--1.0.0.exe-1FB5A3?style=for-the-badge&logo=windows&logoColor=white" alt="Скачать установщик"></a>
-<a href="https://github.com/YatagarasuTS/felix-assistant/releases/latest/download/Felix-1.0.0.exe"><img src="https://img.shields.io/badge/%D0%9F%D0%B5%D1%80%D0%B5%D0%BD%D0%BE%D1%81%D0%BD%D0%B0%D1%8F%20%D0%B2%D0%B5%D1%80%D1%81%D0%B8%D1%8F-Felix--1.0.0.exe-0E8C7E?style=for-the-badge&logo=windows&logoColor=white" alt="Скачать переносную версию"></a>
-<a href="https://github.com/YatagarasuTS/felix-assistant/releases/latest/download/FelixLink-1.0.apk"><img src="https://img.shields.io/badge/Android-FelixLink--1.0.apk-0B5E55?style=for-the-badge&logo=android&logoColor=white" alt="Скачать Феликс Link для Android"></a>
+<a href="https://github.com/YatagarasuTS/felix-assistant/releases/latest/download/FelixSetup-1.1.0.exe"><img src="https://img.shields.io/badge/%D0%A3%D1%81%D1%82%D0%B0%D0%BD%D0%BE%D0%B2%D1%89%D0%B8%D0%BA-FelixSetup--1.1.0.exe-1FB5A3?style=for-the-badge&logo=windows&logoColor=white" alt="Скачать установщик"></a>
+<a href="https://github.com/YatagarasuTS/felix-assistant/releases/latest/download/Felix-1.1.0.exe"><img src="https://img.shields.io/badge/%D0%9F%D0%B5%D1%80%D0%B5%D0%BD%D0%BE%D1%81%D0%BD%D0%B0%D1%8F%20%D0%B2%D0%B5%D1%80%D1%81%D0%B8%D1%8F-Felix--1.1.0.exe-0E8C7E?style=for-the-badge&logo=windows&logoColor=white" alt="Скачать переносную версию"></a>
+<a href="https://github.com/YatagarasuTS/felix-assistant/releases/latest/download/FelixLink-1.1.apk"><img src="https://img.shields.io/badge/Android-FelixLink--1.1.apk-0B5E55?style=for-the-badge&logo=android&logoColor=white" alt="Скачать Феликс Link для Android"></a>
 
 <br><br>
 
-<img src="assets/demo.gif" width="720" alt="Феликс в деле">
+<img src="docs/images/demo.gif" width="720" alt="Феликс в деле">
 
 </div>
 
@@ -41,23 +42,41 @@
 | 💻 **Компьютер** | «сверни все окна», «сделай скриншот», «сколько места на диске», «выключи компьютер через час» |
 | 🧠 **Любые вопросы** | «почему небо голубое?», «придумай тост на день рождения» — через нейросеть |
 | 📱 **Телефон** | «где мой телефон», «прими» / «отклони» звонок, «будильник на телефоне на семь», «сколько заряда на телефоне» |
+| 📲 **Телефон с компьютера** · новое | «закажи пиццу», «вызови такси до работы», «маршрут до вокзала», «купи наушники», «покажи экран телефона», «на телефоне назад» |
 
 Позвать Феликса: сказать **«Феликс»** и команду, нажать **Win + Y** и говорить без обращения или просто кликнуть по нему.
+
+## 📲 Управление телефоном с компьютера
+
+<table>
+  <tr>
+    <td width="34%" align="center"><img src="docs/images/phone-control.gif" width="270" alt="Феликс заказывает пиццу и вызывает такси на телефоне"></td>
+    <td><img src="docs/images/phone-panel.png" alt="Окно «Телефон»: экран телефона на компьютере"></td>
+  </tr>
+</table>
+
+- **Дела голосом.** «Феликс, закажи пиццу» — откроется *твоё* приложение доставки, и Феликс впишет «пицца» в поиск. «Вызови такси до работы» — такси с готовым маршрутом. «Маршрут до вокзала» — карты или навигатор. «Купи наушники», «найди на озоне …» — магазин.
+- **Приложение выбираешь ты** — любое на телефоне: Настройки → Телефон → «Приложения для дел». Не выбрал — Феликс найдёт подходящее сам или спросит: «Через какое: Яндекс Еда или Самокат?». Адреса «дом» и «работа» — там же.
+- **Заказываешь всё равно ты.** Феликс открывает приложение и вписывает запрос; заказ, оплату и поездку подтверждаешь сам на телефоне.
+- **Экран телефона на компьютере** (Android 11+): окно «Телефон» в трее или «Феликс, покажи экран телефона». Клик мышью — нажатие, перетаскивание — свайп, колесо — прокрутка, правая кнопка — «Назад», печатаешь на клавиатуре — текст уходит в поле на телефоне.
+- **Кнопки и мелочи:** «на телефоне назад / домой», «заблокируй телефон», «напиши на телефоне …», «отправь текст на телефон», «открой ссылку на телефоне» (скопированную на компьютере), список всех приложений телефона одним кликом.
+
+Нужен «Феликс Link» 1.1 и включённая на телефоне служба «Феликс Link — управление с компьютера» (специальные возможности). Экран передаётся только пока открыто окно «Телефон» — это видно в уведомлении на телефоне.
 
 ## 🖼️ Как выглядит
 
 <table>
   <tr>
-    <td width="50%"><img src="assets/welcome.png" alt="Знакомство"></td>
-    <td width="50%"><img src="assets/settings-help.png" alt="Что умеет Феликс"></td>
+    <td width="50%"><img src="docs/images/welcome.png" alt="Знакомство"></td>
+    <td width="50%"><img src="docs/images/settings-help.png" alt="Что умеет Феликс"></td>
   </tr>
   <tr>
-    <td><img src="assets/settings-ai.png" alt="Подключение аккаунта Claude"></td>
-    <td><img src="assets/settings-phone.png" alt="Подключение телефона"></td>
+    <td><img src="docs/images/settings-ai.png" alt="Подключение аккаунта Claude"></td>
+    <td><img src="docs/images/settings-phone.png" alt="Подключение телефона"></td>
   </tr>
 </table>
 
-<p align="center"><img src="assets/call.png" width="420" alt="Входящий звонок на экране компьютера"><br><sub>Звонок с телефона — прямо на экране компьютера</sub></p>
+<p align="center"><img src="docs/images/call.png" width="420" alt="Входящий звонок на экране компьютера"><br><sub>Звонок с телефона — прямо на экране компьютера</sub></p>
 
 ## 🧠 Нейросеть — твой собственный аккаунт Claude
 
@@ -77,9 +96,10 @@
 
 Приложение-пульт для Android 9+. Телефон и компьютер должны быть в одной сети Wi-Fi.
 
-<p align="center"><img src="assets/phone.gif" width="680" alt="Команда Феликсу с телефона"></p>
+<p align="center"><img src="docs/images/phone.gif" width="680" alt="Команда Феликсу с телефона"></p>
 
 - команды Феликсу с телефона — голосом или текстом, ответ его голосом;
+- управление телефоном с компьютера: дела (доставка, такси, карты, магазины, музыка), экран телефона на ПК, кнопки, ввод текста;
 - входящие звонки на экране компьютера: принять, отклонить, громкая связь;
 - будильники и таймеры на телефоне, «Феликс, где мой телефон», уведомления;
 - включение компьютера по сети (Wake-on-LAN).
@@ -90,35 +110,51 @@
 
 | Файл | Что это |
 |---|---|
-| **FelixSetup-1.0.0.exe** | Установщик: ярлыки, запуск вместе с Windows, удаление через «Приложения». Права администратора не нужны. |
-| **Felix-1.0.0.exe** | Переносная версия одним файлом: ничего не устанавливает, при первом запуске распаковывается (≈15 с) в `%LOCALAPPDATA%\Felix`, дальше открывается сразу. |
-| **FelixLink-1.0.apk** | Приложение для телефона. Тот же файл Феликс раздаёт по QR-коду из настроек. |
+| **FelixSetup-1.1.0.exe** | Установщик: ярлыки, запуск вместе с Windows, удаление через «Приложения». Права администратора не нужны. Ставится поверх 1.0 — настройки сохраняются. |
+| **Felix-1.1.0.exe** | Переносная версия одним файлом: ничего не устанавливает, при первом запуске распаковывается в `%LOCALAPPDATA%\Felix`, дальше открывается сразу. |
+| **FelixLink-1.1.apk** | Приложение для телефона. Тот же файл Феликс раздаёт по QR-коду из настроек. Ставится поверх 1.0. |
 
 > [!TIP]
 > Программа пока без цифровой подписи, поэтому Windows может показать «Система Windows защитила ваш компьютер». Нажми **«Подробнее» → «Выполнить в любом случае»**.
 > Android попросит разрешить установку из браузера — это нормально для APK не из Google Play.
 
-**Требования:** Windows 10/11 x64, видеокарта с поддержкой WebGL, микрофон, около 550 МБ на диске. Для Феликс Link — Android 9 или новее.
+**Требования:** Windows 10/11 x64, видеокарта с поддержкой WebGL, микрофон, около 550 МБ на диске. Для Феликс Link — Android 9 или новее (экран телефона на компьютере — Android 11+).
 
 ## 🔒 Приватность
 
 - Речь распознаётся и голос синтезируется **прямо на компьютере** — записи голоса никуда не уходят.
 - В интернет уходят только вопросы к выбранной нейросети и запросы погоды, курсов, Википедии и поиска музыки — по твоей команде.
-- Никакой статистики и рекламы.
+- Связь с телефоном — только внутри твоей сети, без серверов. Экран телефона виден на компьютере, только пока открыто окно «Телефон».
+- Никакой статистики и рекламы. Весь код открыт — можно проверить.
+
+## 💚 Открытый код
+
+Феликс — свободная программа под лицензией [MIT](LICENSE): весь код программы, «Феликс Link», установщика и роликов открыт. Можно изучать, менять, собирать свою версию и распространять.
+
+- [docs/BUILDING.md](docs/BUILDING.md) — устройство проекта, сборка из исходников, протокол связи с телефоном;
+- [CONTRIBUTING.md](CONTRIBUTING.md) — как сообщить об ошибке и прислать улучшение;
+- [SECURITY.md](SECURITY.md) — как сообщить об уязвимости.
+
+```
+app/      программа (Electron): команды, нейросеть, окна, связь с телефоном
+phone/    «Феликс Link» для Android (Kotlin)
+native/   помощники на C#: окна, громкость, распознавание речи Vosk, клавиши
+build/    сборка установщика и APK         promo/   рекламные ролики
+```
 
 ## 🔑 Контрольные суммы (SHA-256)
 
 ```
-2e3bfd5f7021dfd0a9b2e5efb2fb16944f99a064e7170607dc3be6751f390c88  FelixSetup-1.0.0.exe
-ab44b1bcf7c68fc12de50439e16b2947ec2865f993b0e9ec62e0dcdc99d7d358  Felix-1.0.0.exe
-70989a9b21eeadeb0ec21bd16e85a3e14ec71d9f4dc7405bba8dfe0062cd3f3f  FelixLink-1.0.apk
+6978c502e547342b44c65aa72d6b4140f56050557063fb3118f727cb8d819922  FelixSetup-1.1.0.exe
+26ac36b88f4cefcc57dcca2730fd556a1956cb36bec07bdf589953fd0fcb310d  Felix-1.1.0.exe
+412d484abce9b74d167ac81e2414561267630471e86b554171db36c3fb1f1c71  FelixLink-1.1.apk
 ```
 
-Проверить: `Get-FileHash .\FelixSetup-1.0.0.exe` в PowerShell.
+Проверить: `Get-FileHash .\FelixSetup-1.1.0.exe` в PowerShell.
 
 ## 📄 Лицензия
 
-Феликс бесплатен для личного и рабочего использования — условия в [LICENSE.txt](LICENSE.txt).
-Сторонние компоненты (Electron, three.js, three-vrm, Vosk, Piper, голоса Piper, Anthropic SDK и др.) — в [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt).
+[MIT](LICENSE) © 2026 YatagarasuTS и участники проекта.
+Сторонние компоненты (Electron, three.js, three-vrm, Vosk, Piper, голоса Piper, Anthropic SDK и др.) — на условиях своих лицензий, см. [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt).
 
 <div align="center"><sub>Felix по-латыни значит «удачливый» 🍀</sub></div>

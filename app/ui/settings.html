@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Феликс — настройки</title>
+<link rel="stylesheet" href="common.css">
+<style>
+  .main { flex: 1; display: flex; min-height: 0; }
+  nav { width: 220px; flex: none; padding: 14px 10px; border-right: 1px solid var(--line); display: flex; flex-direction: column; gap: 2px; }
+  nav button { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 10px; text-align: left; color: var(--dim); font-weight: 600; }
+  nav button:hover { background: var(--line); color: var(--text); }
+  nav button.sel { background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--text); }
+  nav button.sel .ico { color: var(--accent2); }
+  nav .ver { margin-top: auto; padding: 10px 12px; color: var(--dim); font-size: 11.5px; }
+  section { flex: 1; overflow: auto; padding: 22px 30px 40px; display: none; animation: fadeIn .2s; user-select: text; }
+  section.sel { display: block; }
+  h1 { font: 650 22px var(--display); margin: 0 0 4px; }
+  h2 { font: 650 15px var(--display); margin: 26px 0 6px; }
+  p.lead { color: var(--dim); margin: 0 0 18px; max-width: 640px; }
+  .themes { display: flex; gap: 10px; flex-wrap: wrap; }
+  .themes button { width: 98px; padding: 8px; border-radius: 12px; border: 2px solid var(--line2); text-align: left; }
+  .themes button.sel { border-color: var(--accent); }
+  .themes .sw { height: 34px; border-radius: 8px; margin-bottom: 6px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 22px; max-width: 760px; }
+  .seg { display: inline-flex; background: var(--line); border-radius: 10px; padding: 3px; }
+  .seg button { padding: 6px 14px; border-radius: 8px; color: var(--dim); font-weight: 600; }
+  .seg button.sel { background: var(--accent); color: #04201D; }
+  .cities { margin-top: 6px; display: flex; flex-direction: column; gap: 4px; }
+  .cities button { text-align: left; padding: 7px 10px; border-radius: 8px; background: var(--line); }
+  .cities button:hover { background: var(--line2); }
+  .status { padding: 10px 12px; border-radius: 10px; background: var(--line); margin: 10px 0; max-width: 640px; }
+  .status.ok { background: color-mix(in srgb, #22c55e 18%, transparent); }
+  .status.bad { background: color-mix(in srgb, #ef4444 18%, transparent); }
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; max-width: 900px; }
+  .card { padding: 14px; border-radius: 14px; background: var(--line); }
+  .card b { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; } .card b .ico { color: var(--accent2); }
+  .card div { color: var(--dim); font-size: 12.5px; line-height: 1.5; }
+  .chat { display: grid; grid-template-columns: 1fr 120px 2fr 36px; gap: 8px; margin-bottom: 8px; max-width: 760px; }
+  .chat button.del { border-radius: 8px; color: var(--dim); } .chat button.del:hover { background: var(--line2); color: var(--text); }
+  textarea.inp { min-height: 60px; resize: vertical; }
+  a { color: var(--accent2); }
+  .license { font-size: 12.5px; color: var(--dim); line-height: 1.6; max-width: 720px; }
+  .license b { color: var(--text); }
+  .steps { display: flex; flex-direction: column; gap: 12px; margin: 10px 0; max-width: 720px; }
+  .st { display: flex; gap: 14px; align-items: flex-start; margin-bottom: 12px; }
+  .st > b { flex: none; width: 28px; height: 28px; border-radius: 50%; background: color-mix(in srgb, var(--accent) 25%, transparent); color: var(--accent2); display: grid; place-items: center; }
+  .small { font-size: 12.5px; }
+  code { background: var(--line); padding: 1px 6px; border-radius: 6px; }
+  .phgrid { display: grid; grid-template-columns: 230px 1fr; gap: 24px; margin: 18px 0 8px; max-width: 860px; align-items: start; transition: opacity .2s; }
+  .phgrid.off { opacity: .35; pointer-events: none; filter: grayscale(1); }
+  .qrbox { text-align: center; }
+  #qr { width: 220px; height: 220px; border-radius: 16px; background: #fff; display: grid; place-items: center; margin-bottom: 8px; }
+  #qr img { width: 200px; height: 200px; image-rendering: pixelated; }
+  .code { font: 700 32px var(--display); letter-spacing: 3px; color: var(--accent2); margin: 6px 0 8px; user-select: text; }
+  .svc { display: grid; grid-template-columns: 210px 1fr; gap: 8px 14px; max-width: 760px; align-items: center; }
+  .svc .k { display: flex; gap: 10px; align-items: center; font-weight: 600; } .svc .k i { font: normal 20px 'Segoe UI Emoji'; width: 26px; text-align: center; }
+  .svc select { width: 100%; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="titlebar">
+    <span class="logo" id="logo"></span><span class="t">Феликс — настройки</span>
+    <button id="bmin" title="Свернуть"></button><button id="bclose" class="x" title="Закрыть"></button>
+  </div>
+  <div class="main">
+    <nav id="nav"></nav>
+
+    <section id="s-general">
+      <h1>Общие</h1>
+      <p class="lead">Как Феликсу к тебе обращаться и где ты живёшь — для погоды и приветствий.</p>
+      <div class="grid2">
+        <div class="field"><label>Имя</label><input class="inp" id="nick" maxlength="24" placeholder="Например, Саша"><span class="hint">Можно оставить пустым.</span></div>
+        <div class="field"><label>Город для погоды</label><input class="inp" id="city" placeholder="Начни вводить…"><div class="cities" id="cities"></div><span class="hint" id="cityNow"></span></div>
+      </div>
+      <h2>Тема</h2>
+      <div class="themes" id="themes"></div>
+      <h2>Запуск</h2>
+      <div class="row"><div class="grow">Запускать вместе с Windows<div class="sub">Феликс появится после входа в систему.</div></div><span class="switch" data-k="autostart"></span></div>
+      <div class="row"><div class="grow">Звуки интерфейса<div class="sub">Колокольчик при появлении, щелчки, сигнал таймера.</div></div><span class="switch" data-k="sounds.ui"></span></div>
+    </section>
+
+    <section id="s-felix">
+      <h1>Феликс</h1>
+      <p class="lead">Где он стоит и как себя ведёт. Феликса можно перетащить голосом: «Феликс, перейди влево».</p>
+      <div class="row"><div class="grow">Показывать Феликса на рабочем столе</div><span class="switch" data-k="assistant.enabled"></span></div>
+      <div class="row"><div class="grow">Сторона экрана</div><div class="seg" id="side"><button data-v="left">Слева</button><button data-v="right">Справа</button></div></div>
+      <div class="row"><div class="grow">Размер<div class="sub" id="scaleV"></div></div><input type="range" id="scale" min="0.7" max="1.3" step="0.05"></div>
+      <div class="row"><div class="grow">Высота над краем экрана<div class="sub" id="liftV"></div></div><input type="range" id="lift" min="0" max="300" step="4"></div>
+      <div class="row"><div class="grow">Субтитры в облачке</div><span class="switch" data-k="assistant.subtitles"></span></div>
+      <div class="row"><div class="grow">Гулять по рабочему столу, пока тебя нет<div class="sub">Через 10 минут без мыши и клавиатуры Феликс заглядывает в папки на рабочем столе и засыпает.</div></div><span class="switch" data-k="assistant.idle"></span></div>
+      <div class="row"><div class="grow">Клавиши Win + Y — позвать Феликса</div><span class="switch" data-k="assistant.winY"></span></div>
+    </section>
+
+    <section id="s-voice">
+      <h1>Голос</h1>
+      <p class="lead">Голос работает без интернета (нейросеть Piper). Можно подключить свой голос.</p>
+      <div class="field"><label>Голос</label><select class="inp" id="voice"></select></div>
+      <div class="row"><div class="grow">Тон<div class="sub" id="pitchV"></div></div><input type="range" id="pitch" min="0.85" max="1.2" step="0.01"></div>
+      <div class="row"><div class="grow">Громкость<div class="sub" id="volV"></div></div><input type="range" id="volume" min="0.2" max="1" step="0.05"></div>
+      <div style="display:flex;gap:10px;margin:14px 0"><button class="btn primary" id="vtest">Прослушать</button><button class="btn" id="vfolder">Папка своих голосов</button></div>
+      <div id="httpBox" style="display:none">
+        <h2>Свой ИИ-голос по HTTP</h2>
+        <p class="lead">Любой синтезатор с HTTP-доступом (XTTS, Silero, Coqui, облачный API). В адресе и теле запроса {text} заменяется фразой. Ответ — wav/mp3/ogg или JSON с полем audio (base64).</p>
+        <div class="field"><label>Адрес</label><input class="inp" id="hurl" placeholder="http://127.0.0.1:8020/tts?text={text}"></div>
+        <div class="field"><label>Тело POST (необязательно)</label><textarea class="inp" id="hbody" placeholder='{"text": "{text}"}'></textarea></div>
+        <div class="field"><label>Заголовки (необязательно)</label><textarea class="inp" id="hhead" placeholder="Authorization: Bearer …"></textarea></div>
+      </div>
+    </section>
+
+    <section id="s-mic">
+      <h1>Микрофон</h1>
+      <p class="lead">Речь распознаётся прямо на компьютере (Vosk), звук никуда не отправляется. Скажи «Феликс» и команду — или нажми Win + Y и говори без обращения.</p>
+      <div class="row"><div class="grow">Слушать микрофон</div><span class="switch" data-k="assistant.mic"></span></div>
+      <div class="row"><div class="grow">Отзываться на «Феликс…»<div class="sub">Если выключить — слушает только после клика по нему или Win + Y.</div></div><span class="switch" data-k="assistant.wake"></span></div>
+      <div class="field" style="margin-top:14px"><label>Устройство</label><select class="inp" id="micDev"></select></div>
+    </section>
+
+    <section id="s-ai">
+      <h1>Нейросеть</h1>
+      <p class="lead">Обычные команды Феликс выполняет сам и без интернета. Свободные вопросы («почему небо голубое», «придумай тост») он задаёт нейросети — через <b>твой собственный</b> аккаунт Claude или локальную модель на этом компьютере.</p>
+      <div class="field"><label>Источник</label>
+        <select class="inp" id="provider">
+          <option value="auto">Автоматически — твой аккаунт Claude, если подключён, иначе локальная модель</option>
+          <option value="claude-api">Мой аккаунт Claude (Anthropic)</option>
+          <option value="local">Локальная модель — Ollama, бесплатно и офлайн</option>
+          <option value="off">Не использовать</option>
+        </select>
+      </div>
+      <h2>Мой аккаунт Claude</h2>
+      <div class="steps">
+        <div class="st"><b>1</b><div>Войди в свой аккаунт Anthropic (или зарегистрируйся) и создай ключ API. Оплата — по твоему тарифу Anthropic, Феликс ничего не берёт.<br><button class="btn primary" id="consoleOpen" style="margin-top:8px">Войти в аккаунт и создать ключ</button></div></div>
+        <div class="st"><b>2</b><div>Скопируй ключ (начинается с <code>sk-ant-</code>) и вставь сюда:
+          <div style="display:flex;gap:10px;max-width:640px;margin-top:8px"><input class="inp" id="key" type="password" placeholder="sk-ant-…" style="flex:1"><button class="btn primary" id="keySave">Подключить</button><button class="btn" id="keyDel">Отключить</button></div></div></div>
+      </div>
+      <div class="hint dim" id="keyHint" style="margin-top:6px"></div>
+      <p class="lead small">Ключ хранится только на этом компьютере в зашифрованном виде (Windows DPAPI) и отправляется только в Anthropic. Модель — Claude Opus 5.5; если она откажется отвечать, Anthropic сам повторит запрос на запасной модели. Подписку claude.ai (Pro, Max) сторонние программы по правилам Anthropic использовать не могут — для них нужен именно ключ API.</p>
+      <h2>Локальная модель (Ollama)</h2>
+      <p class="lead">Установи <a href="https://ollama.com" target="_blank">Ollama</a> и скачай модель, например <b>qwen2.5:7b</b>. Работает без интернета, нужна мощная видеокарта или терпение.</p>
+      <div class="grid2"><div class="field"><label>Адрес</label><input class="inp" id="lurl"></div><div class="field"><label>Модель</label><input class="inp" id="lmodel"></div></div>
+      <div class="row"><div class="grow">Помнить последние вопросы<div class="sub">Чтобы спросить «а сколько ему лет?» после «кто такой…». Хранится только пока Феликс запущен.</div></div><span class="switch" data-k="ai.memory"></span></div>
+      <div style="display:flex;gap:10px;margin-top:14px"><button class="btn primary" id="aiTest">Проверить</button></div>
+      <div class="status" id="aiStatus" style="display:none"></div>
+    </section>
+
+    <section id="s-phone">
+      <h1>Телефон</h1>
+      <p class="lead">Приложение «Феликс Link» для Android 9+: команды Феликсу с телефона (голосом или текстом, ответ — его голосом), управление телефоном с компьютера (экран, приложения, доставка еды, такси, карты), звонки телефона на экране компьютера, будильники и таймеры на телефоне, «где мой телефон», включение компьютера по сети. Телефон и компьютер должны быть в одной сети Wi-Fi.</p>
+      <div class="row"><div class="grow">Связь с телефоном<div class="sub" id="phState">…</div></div><button class="btn" id="phRing" style="display:none">Найти телефон</button><span class="switch" data-k="phone.enabled"></span></div>
+      <div class="phgrid">
+        <div class="qrbox"><div id="qr"></div><div class="dim small" id="qrUrl"></div></div>
+        <div>
+          <div class="st"><b>1</b><div>Наведи камеру телефона на QR-код — скачается «Феликс Link». Установи его (Android спросит разрешение на установку из браузера).</div></div>
+          <div class="st"><b>2</b><div>В приложении введи код сопряжения и нажми «Подключить»:<div class="code" id="phCode">—</div><button class="btn" id="phNew">Новый код</button> <span class="dim small">новый код отключает старый телефон</span></div></div>
+          <div class="st"><b>3</b><div>Там же нажми «Открыть» у каждого разрешения. На Xiaomi обязательно «Автозапуск» и «Без ограничений» батареи.</div></div>
+        </div>
+      </div>
+      <div class="row"><div class="grow">Брандмауэр Windows<div class="sub" id="fwSub">…</div></div><button class="btn primary" id="phFw" style="display:none">Разрешить</button><span class="dim" id="fwOk" style="display:none">✓ Разрешено</span></div>
+      <div class="row"><div class="grow">Объявлять звонки голосом<div class="sub">Феликс скажет, кто звонит, а «прими» и «отклони» сработают без обращения.</div></div><span class="switch" data-k="phone.announce"></span></div>
+      <div class="row"><div class="grow">Уведомления телефона<div class="sub">Показывать в облачке над Феликсом, без голоса.</div></div><span class="switch" data-k="phone.notifs"></span></div>
+      <h2>Управление телефоном с компьютера</h2>
+      <p class="lead small">Окно «Телефон»: экран телефона на компьютере (Android 11+) — клик мышью работает как нажатие пальцем, есть «Назад», «Домой», список приложений и ввод текста с клавиатуры. На телефоне включи «Феликс Link — управление с компьютера» в специальных возможностях. Голосом: «Феликс, покажи экран телефона», «на телефоне назад», «напиши на телефоне …».</p>
+      <div style="display:flex;gap:10px;align-items:center;margin-bottom:8px"><button class="btn primary" id="phPanel">Открыть телефон на компьютере</button><span class="dim small" id="phCtl"></span></div>
+      <h2>Приложения для дел</h2>
+      <p class="lead small">Выбери, какое приложение телефона открывать: «Феликс, закажи пиццу» — доставку, «вызови такси до работы» — такси, «маршрут до вокзала» — карты, «купи наушники» — магазин. Феликс откроет приложение и впишет запрос в поиск; заказ и оплату подтверждаешь сам.</p>
+      <div id="svc" class="svc"></div>
+      <div class="grid2" style="margin-top:12px">
+        <div class="field"><label>Дом — адрес для «такси домой»</label><input class="inp" id="plHome" placeholder="Например: Казань, ул. Баумана, 10"></div>
+        <div class="field"><label>Работа — адрес для «такси до работы»</label><input class="inp" id="plWork" placeholder="Город, улица, дом"></div>
+      </div>
+      <h2>Включение компьютера с телефона</h2>
+      <p class="lead small">Кнопка «⏻ Включить компьютер» в «Феликс Link» будит выключенный компьютер по сети (Wake-on-LAN). Для этого в BIOS материнской платы должен быть включён Wake on LAN, а в свойствах сетевой карты Windows — «Пробуждение по магическому пакету». <span id="wolInfo"></span></p>
+    </section>
+
+    <section id="s-chats">
+      <h1>Чаты и музыка</h1>
+      <p class="lead">Ярлыки для команд «открой в телеграме чат с мамой» и «открой в дискорде сервер друзья». Ссылка — t.me/… или discord.com/channels/…; без ссылки Феликс найдёт чат поиском в самой программе.</p>
+      <div id="chats"></div>
+      <button class="btn" id="chatAdd">Добавить ярлык</button>
+      <h2>Музыка</h2>
+      <div class="row"><div class="grow">Где искать «включи трек …»</div><div class="seg" id="music"><button data-v="youtube">YouTube Music</button><button data-v="yandex">Яндекс Музыка</button></div></div>
+    </section>
+
+    <section id="s-help">
+      <h1>Что умеет Феликс</h1>
+      <p class="lead">Скажи «Феликс» и команду. Или нажми Win + Y и говори без обращения.</p>
+      <div class="cards" id="cards"></div>
+      <h2>Напечатать команду</h2>
+      <div style="display:flex;gap:10px;max-width:640px"><input class="inp" id="cmd" placeholder="Например: погода в Казани завтра" style="flex:1"><button class="btn primary" id="cmdGo">Выполнить</button></div>
+    </section>
+
+    <section id="s-about">
+      <h1>О программе</h1>
+      <p class="lead" id="aboutVer"></p>
+      <div class="license">
+        <p><b>Открытый код.</b> Феликс — свободная программа под лицензией MIT: код программы и «Феликс Link» открыт, его можно изучать, менять и предлагать улучшения. <a href="#" id="repoLink">github.com/YatagarasuTS/felix-assistant</a></p>
+        <p><b>Приватность.</b> Распознавание речи и голос работают на этом компьютере. В интернет уходят только: вопросы к нейросети (в Anthropic или на твой сервер Ollama — смотря что выбрано), запросы погоды (Open-Meteo), курса валют (ЦБ РФ), Википедии и поиска трека. Записи голоса не сохраняются и никуда не отправляются. Экран телефона виден здесь, только пока открыто окно «Телефон», и никуда больше не передаётся.</p>
+        <p><b>Компоненты.</b> Electron и Chromium (MIT/BSD), three.js и three-vrm (MIT), Vosk и модель vosk-model-small-ru (Apache 2.0), Piper (MIT) и eSpeak NG (GPL-3.0, отдельная программа), голоса Piper «Дмитрий» и «Денис» (наборы данных CC0), NAudio (MIT), Anthropic SDK (Apache 2.0), qrcode-generator (MIT, Kazuhiko Arase; QR Code — товарный знак DENSO WAVE). 3D-модель Феликса сделана в VRoid Studio из встроенных материалов, разрешённых для коммерческого использования. Полные тексты лицензий — в папке программы, файл THIRD-PARTY-NOTICES.txt.</p>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:14px"><button class="btn" id="openData">Папка настроек и журнала</button><button class="btn" id="openNotes">Мои заметки</button></div>
+    </section>
+  </div>
+</div>
+<script type="module" src="settings.js"></script>
+</body>
+</html>

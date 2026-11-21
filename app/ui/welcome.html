@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Феликс — знакомство</title>
+<link rel="stylesheet" href="common.css">
+<style>
+  .wrap { flex: 1; display: grid; grid-template-columns: 330px 1fr; min-height: 0; }
+  .hero { position: relative; overflow: hidden; background: radial-gradient(120% 90% at 30% 20%, color-mix(in srgb, var(--accent) 45%, transparent), transparent 60%), linear-gradient(160deg, #0d2a2e, #071113); }
+  .hero img { position: absolute; left: 50%; bottom: 0; height: 96%; transform: translateX(-50%); filter: drop-shadow(0 10px 30px rgba(0,0,0,.5)); }
+  .hero .leaf { position: absolute; width: 18px; height: 18px; opacity: .5; color: var(--accent2); animation: fall 9s linear infinite; }
+  .hero .leaf svg { width: 100%; height: 100%; fill: currentColor; }
+  @keyframes fall { from { transform: translateY(-40px) rotate(0); } to { transform: translateY(640px) rotate(360deg); } }
+  .steps { display: flex; flex-direction: column; padding: 34px 40px 26px; min-height: 0; }
+  .step { display: none; flex: 1; flex-direction: column; animation: fadeIn .25s; }
+  .step.sel { display: flex; }
+  h1 { font: 700 28px var(--display); margin: 0 0 8px; }
+  h1 em { font-style: normal; color: var(--accent2); }
+  .lead { color: var(--dim); font-size: 14px; line-height: 1.55; margin: 0 0 22px; }
+  .foot { display: flex; align-items: center; gap: 10px; margin-top: auto; padding-top: 16px; }
+  .dots { display: flex; gap: 6px; flex: 1; }
+  .dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--line2); }
+  .dots i.sel { background: var(--accent); width: 22px; border-radius: 4px; }
+  .opts { display: flex; flex-direction: column; gap: 8px; }
+  .opt { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border-radius: 12px; border: 1.5px solid var(--line2); text-align: left; }
+  .opt.sel { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+  .opt b { display: block; } .opt span { color: var(--dim); font-size: 12.5px; }
+  .opt .r { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--line2); flex: none; margin-top: 2px; }
+  .opt.sel .r { border: 5px solid var(--accent); }
+  .cities { margin-top: 6px; display: flex; flex-direction: column; gap: 4px; }
+  .cities button { text-align: left; padding: 7px 10px; border-radius: 8px; background: var(--line); }
+  .cities button.sel { background: color-mix(in srgb, var(--accent) 25%, transparent); }
+  .check { display: flex; gap: 10px; align-items: center; padding: 8px 0; }
+  .say { margin-top: 10px; padding: 12px 14px; border-radius: 12px; background: var(--line); font-size: 14px; line-height: 1.7; }
+  .say b { color: var(--accent2); }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="titlebar"><span class="logo" id="logo"></span><span class="t">Феликс</span><button id="bclose" class="x" title="Закрыть"></button></div>
+  <div class="wrap">
+    <div class="hero" id="hero"><img src="assets/felix_portrait.png" alt=""></div>
+    <div class="steps">
+      <div class="step sel" data-n="0">
+        <h1>Привет! Я <em>Феликс</em>.</h1>
+        <p class="lead">Голосовой помощник на твоём рабочем столе. Открываю программы и сайты, ставлю таймеры и будильники, управляю музыкой и звуком, рассказываю погоду, а сложные вопросы задаю нейросети.<br><br>Моё имя по-латыни значит «удачливый». Давай знакомиться — это минута.</p>
+        <div class="foot"><div class="dots"></div><button class="btn primary" data-next>Познакомиться</button></div>
+      </div>
+      <div class="step" data-n="1">
+        <h1>Как тебя зовут?</h1>
+        <p class="lead">И откуда ты — чтобы рассказывать погоду без лишних вопросов.</p>
+        <div class="field"><label>Имя</label><input class="inp" id="nick" maxlength="24" placeholder="Например, Саша"></div>
+        <div class="field"><label>Город</label><input class="inp" id="city" placeholder="Начни вводить…"><div class="cities" id="cities"></div></div>
+        <div class="foot"><div class="dots"></div><button class="btn" data-back>Назад</button><button class="btn primary" data-next>Дальше</button></div>
+      </div>
+      <div class="step" data-n="2">
+        <h1>Голос и микрофон</h1>
+        <p class="lead">Я понимаю речь прямо на компьютере — запись никуда не уходит. Скажи «Феликс» и команду, или нажми <b>Win + Y</b> и говори без обращения.</p>
+        <label class="check"><span class="switch on" id="mic"></span> Слушать микрофон</label>
+        <label class="check"><span class="switch on" id="auto"></span> Запускаться вместе с Windows</label>
+        <div class="say">Попробуй потом: <b>«Феликс, какая погода?»</b> · <b>«Феликс, таймер на пять минут»</b> · <b>«Феликс, открой загрузки»</b></div>
+        <div class="foot"><div class="dots"></div><button class="btn" data-back>Назад</button><button class="btn primary" data-next>Дальше</button></div>
+      </div>
+      <div class="step" data-n="3">
+        <h1>Нейросеть для вопросов</h1>
+        <p class="lead">Команды работают и без неё. Чтобы отвечать на любые вопросы, подключи свой аккаунт Claude или локальную модель. Можно сделать и потом, в настройках.</p>
+        <div class="opts" id="ai">
+          <button class="opt sel" data-v="claude-api"><span class="r"></span><div><b>Мой аккаунт Claude</b><span>Войди в свой аккаунт Anthropic, создай ключ и вставь его сюда. Оплата — по твоему тарифу, ключ хранится зашифрованным.</span></div></button>
+          <button class="opt" data-v="local"><span class="r"></span><div><b>Локальная модель (Ollama)</b><span>Бесплатно и без интернета, нужен мощный компьютер.</span></div></button>
+          <button class="opt" data-v="auto"><span class="r"></span><div><b>Подключу позже</b><span>Пока только встроенные команды.</span></div></button>
+        </div>
+        <div id="keyBox" style="margin-top:10px;display:flex;gap:10px"><button class="btn" id="consoleOpen">Войти в аккаунт и создать ключ</button><input class="inp" id="key" type="password" placeholder="Ключ: sk-ant-…" style="flex:1"></div>
+        <div class="dim" id="keyErr" style="margin-top:6px;font-size:12.5px"></div>
+        <div class="foot"><div class="dots"></div><button class="btn" data-back>Назад</button><button class="btn primary" id="done">Готово</button></div>
+      </div>
+    </div>
+  </div>
+</div>
+<script type="module">
+import { Y, init, svg, esc } from './common.js';
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+await init();
+$('#logo').innerHTML = svg('clover'); $('#bclose').innerHTML = svg('close');
+$('#bclose').onclick = () => Y.invoke('win:close');
+for (let i = 0; i < 9; i++) { const l = document.createElement('div'); l.className = 'leaf'; l.innerHTML = svg('clover', '', '0 0 24 24'); l.style.left = (5 + Math.random() * 90) + '%'; l.style.animationDelay = (-Math.random() * 9) + 's'; l.style.animationDuration = (7 + Math.random() * 5) + 's'; $('#hero').appendChild(l); }
+let step = 0;
+const steps = $$('.step');
+$$('.dots').forEach(d => d.innerHTML = steps.map((_, i) => '<i></i>').join(''));
+function show(n) { step = n; steps.forEach((s, i) => s.classList.toggle('sel', i === n)); $$('.dots').forEach(d => [...d.children].forEach((x, i) => x.classList.toggle('sel', i === n))); }
+show(Math.min(steps.length - 1, +new URLSearchParams(location.search).get('step') || 0));
+$$('[data-next]').forEach(b => b.onclick = () => show(step + 1));
+$$('[data-back]').forEach(b => b.onclick = () => show(step - 1));
+$$('.switch').forEach(s => s.onclick = () => s.classList.toggle('on'));
+let city = null, cityT = null;
+$('#city').oninput = () => {
+  clearTimeout(cityT); city = null;
+  const q = $('#city').value.trim();
+  if (q.length < 2) { $('#cities').innerHTML = ''; return; }
+  cityT = setTimeout(async () => {
+    const list = await Y.invoke('geocode', q);
+    $('#cities').innerHTML = list.slice(0, 4).map((c, i) => `<button data-i="${i}">${esc(c.name)} <span class="dim">${esc(c.region)}</span></button>`).join('');
+    $$('#cities button').forEach(b => b.onclick = () => { city = list[+b.dataset.i]; $$('#cities button').forEach(x => x.classList.toggle('sel', x === b)); });
+  }, 350);
+};
+let ai = 'claude-api';
+$$('#ai .opt').forEach(b => b.onclick = () => { ai = b.dataset.v; $$('#ai .opt').forEach(x => x.classList.toggle('sel', x === b)); $('#keyBox').style.display = ai === 'claude-api' ? 'flex' : 'none'; $('#keyErr').textContent = ''; });
+$('#consoleOpen').onclick = () => Y.invoke('open', 'url', 'https://console.anthropic.com/settings/keys');
+$('#done').onclick = async () => {
+  const key = ai === 'claude-api' ? $('#key').value.trim() : '';
+  if (key) {
+    $('#done').disabled = true; $('#keyErr').textContent = 'Проверяю ключ…';
+    const r = await Y.invoke('ai:setKey', key);
+    $('#done').disabled = false;
+    if (!r.ok && !/сохранён/.test(r.error || '')) { $('#keyErr').textContent = r.error; return; }
+  }
+  Y.invoke('welcome:done', { nick: $('#nick').value, city, mic: $('#mic').classList.contains('on'), autostart: $('#auto').classList.contains('on'), ai: ai === 'claude-api' && !key ? 'auto' : ai });
+};
+</script>
+</body>
+</html>

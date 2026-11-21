@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Долгое нажатие на значок «Феликс Link» → «Включить компьютер» -->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:enabled="true"
+        android:icon="@drawable/ic_power"
+        android:shortcutId="wake"
+        android:shortcutLongLabel="@string/sc_wake_long"
+        android:shortcutShortLabel="@string/sc_wake">
+        <intent
+            android:action="app.felixassistant.link.WAKE"
+            android:targetClass="app.felixassistant.link.MainActivity"
+            android:targetPackage="app.felixassistant.link" />
+    </shortcut>
+</shortcuts>

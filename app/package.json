@@ -1,0 +1,14 @@
+{
+  "name": "felix-assistant",
+  "productName": "Felix",
+  "version": "1.1.0",
+  "description": "Феликс — голосовой 3D-ассистент для рабочего стола Windows и пульт для телефона",
+  "main": "main.js",
+  "private": true,
+  "license": "MIT",
+  "repository": { "type": "git", "url": "https://github.com/YatagarasuTS/felix-assistant.git" },
+  "homepage": "https://github.com/YatagarasuTS/felix-assistant",
+  "dependencies": {
+    "@anthropic-ai/sdk": "1.12.0"
+  }
+}

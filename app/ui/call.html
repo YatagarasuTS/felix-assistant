@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Звонок</title>
+<link rel="stylesheet" href="common.css">
+<style>
+  html, body { width: 100%; height: 100%; overflow: hidden; }
+  #card { position: absolute; inset: 6px; display: flex; align-items: center; gap: 14px; padding: 12px 16px; border-radius: 22px;
+    background: linear-gradient(180deg, color-mix(in srgb, var(--panel) 92%, white 3%), var(--panel));
+    border: 1.5px solid var(--accent); box-shadow: 0 14px 40px rgba(0,0,0,.6), 0 0 22px color-mix(in srgb, var(--accent) 35%, transparent);
+    animation: in .3s ease-out; }
+  @keyframes in { from { transform: translateY(16px); opacity: 0; } }
+  #ava { flex: none; width: 58px; height: 58px; border-radius: 50%; display: grid; place-items: center; font: 700 24px var(--display); color: #fff;
+    background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--accent2) 70%, white 10%), var(--accent) 60%, #06302b); }
+  body.ringing #ava { animation: ring 1.2s ease-in-out infinite; }
+  @keyframes ring { 0%,100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 60%, transparent); } 50% { box-shadow: 0 0 0 10px transparent; } }
+  #who { flex: 1; min-width: 0; }
+  #name { font: 650 17px var(--display); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #sub { color: var(--dim); font-size: 13px; margin-top: 3px; }
+  #btns { display: flex; gap: 10px; flex: none; }
+  .b { width: 48px; height: 48px; border-radius: 50%; border: none; display: grid; place-items: center; color: #fff; transition: transform .12s, filter .12s; }
+  .b:hover { transform: scale(1.08); filter: brightness(1.15); }
+  .b svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .ok { background: #16a34a; } .no { background: #dc2626; } .sp { background: rgba(255,255,255,.12); } .sp.on { background: var(--accent); }
+  .no svg { transform: rotate(135deg); }
+</style>
+</head>
+<body>
+<div id="card">
+  <div id="ava">?</div>
+  <div id="who"><div id="name"></div><div id="sub"></div></div>
+  <div id="btns"></div>
+</div>
+<script type="module">
+import { Y, init, sound } from './common.js';
+await init();
+const $ = s => document.querySelector(s);
+const PHONE = '<svg viewBox="0 0 24 24"><path d="M6.5 3.5h3l1.5 4-2 1.3a11 11 0 0 0 6.2 6.2l1.3-2 4 1.5v3a2 2 0 0 1-2 2A16.5 16.5 0 0 1 4.5 5.5a2 2 0 0 1 2-2z"/></svg>';
+const SPEAKER = '<svg viewBox="0 0 24 24"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></svg>';
+let call = null, speaker = false, timer = null;
+const btn = (cls, html, title, fn) => { const b = document.createElement('button'); b.className = 'b ' + cls; b.innerHTML = html; b.title = title; b.onclick = fn; return b; };
+const cmd = async (c, args) => { sound('pop', 0.3); const r = await Y.invoke('phone:cmd', c, args); return r && r.ok; };
+const mmss = s => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+
+function render() {
+  if (!call) return;
+  document.body.className = call.state;
+  const name = call.name || call.number || 'Неизвестный номер';
+  $('#name').textContent = call.state === 'ended' ? (call.text || 'Звонок завершён') : name;
+  $('#ava').textContent = call.state === 'ended' ? '✓' : (call.name ? call.name.trim()[0].toUpperCase() : '#');
+  const btns = $('#btns'); btns.innerHTML = '';
+  clearInterval(timer);
+  if (call.state === 'ringing') {
+    $('#sub').textContent = (call.name && call.number ? call.number + ' · ' : '') + 'Входящий звонок';
+    btns.append(btn('no', PHONE, 'Отклонить', () => cmd('decline')), btn('ok', PHONE, 'Принять', () => cmd('answer')));
+  } else if (call.state === 'active') {
+    const tick = () => { $('#sub').textContent = `${call.incoming ? 'Разговор' : 'Исходящий'} · ${mmss(Math.max(0, Math.round((Date.now() - call.since) / 1000)))}`; };
+    tick(); timer = setInterval(tick, 1000);
+    const sp = btn('sp' + (speaker ? ' on' : ''), SPEAKER, 'Громкая связь', async () => { if (await cmd('speaker', { on: !speaker })) { speaker = !speaker; call.speaker = speaker; sp.classList.toggle('on', speaker); } });
+    btns.append(sp, btn('no', PHONE, 'Завершить', () => cmd('hangup')));
+  } else { $('#sub').textContent = ''; speaker = false; }
+}
+Y.on('call', d => {
+  if (!d) return;
+  if (d.state !== (call && call.state)) speaker = speaker && d.state === 'active';
+  if (typeof d.speaker === 'boolean') speaker = d.speaker;
+  call = d; render();
+});
+</script>
+</body>
+</html>

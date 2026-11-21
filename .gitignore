@@ -1,0 +1,56 @@
+# сборка и выпуски
+dist/
+build/out/
+build/payload.zip
+build/installer/*.exe
+build/installer/portrait.png
+build/installer/license.txt
+native/out/
+native/**/bin/
+native/**/obj/
+
+# данные программы: голоса Piper, модель Vosk, нативные библиотеки — скачиваются отдельно (docs/BUILDING.md)
+stage/voice/
+stage/stt/
+stage/native/
+stage/models/
+stage/phone/
+voices/
+
+# зависимости
+node_modules/
+tools/bin/
+
+# Android: ключ подписи релизов — НИКОГДА не в репозиторий
+phone/keystore/
+phone/local.properties
+phone/.gradle/
+phone/build/
+phone/app/build/
+phone/*.log
+
+# проверки и ролики
+test/data*/
+test/*.png
+test/*.wav
+test/*.txt
+test/**/shots*/
+promo/*.wav
+promo/*.mp4
+promo/*.json
+promo/*.log
+promo/*.ttf
+promo/v_*.txt
+promo/voice*/
+promo/stills*/
+promo/vstills*/
+promo/check/
+model/felix_raw.vrm
+model/*.png
+model/dump.txt
+tools/*.txt
+
+# система
+.DS_Store
+Thumbs.db
+*.tmp

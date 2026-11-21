@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Felix promo</title>
+<style>
+  :root { --teal: #1FB5A3; --teal2: #5EF0D8; --navy: #26303F; --bg: #071113; --text: #E8FBF8; --dim: #86AFAA; --font: 'Segoe UI Variable Text', 'Segoe UI', sans-serif; --display: 'Segoe UI Variable Display', 'Segoe UI', sans-serif; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: #000; color: var(--text); font: 22px/1.35 var(--font); -webkit-font-smoothing: antialiased; }
+  .layer { position: absolute; inset: 0; }
+  #intro { background: radial-gradient(80% 90% at 50% 45%, #13474a 0%, #0a2427 45%, #040b0c 100%); }
+  #end { background: radial-gradient(70% 90% at 62% 50%, #145a57 0%, #0a2628 50%, #030809 100%); opacity: 0; }
+  #desk { opacity: 0; overflow: hidden; }
+  #wall { position: absolute; inset: -40px; background:
+      radial-gradient(40% 50% at 18% 30%, rgba(94,240,216,.35), transparent 70%),
+      radial-gradient(45% 55% at 85% 25%, rgba(108,92,255,.30), transparent 70%),
+      radial-gradient(60% 60% at 60% 95%, rgba(31,181,163,.35), transparent 70%),
+      linear-gradient(160deg, #0f2c3a 0%, #102a33 40%, #0b1d24 100%); }
+  .icons { position: absolute; left: 34px; top: 40px; display: grid; gap: 30px; }
+  .dicon { width: 104px; text-align: center; font-size: 15px; color: #eef; text-shadow: 0 1px 3px rgba(0,0,0,.6); }
+  .dicon i { display: block; width: 62px; height: 62px; margin: 0 auto 8px; border-radius: 14px; box-shadow: 0 6px 16px rgba(0,0,0,.35); position: relative; }
+  .taskbar { position: absolute; left: 0; right: 0; bottom: 0; height: 64px; background: rgba(10,22,26,.78); backdrop-filter: blur(20px); border-top: 1px solid rgba(255,255,255,.08); display: flex; align-items: center; justify-content: center; gap: 14px; }
+  .taskbar i { width: 44px; height: 44px; border-radius: 11px; display: block; position: relative; }
+  .taskbar i.on::after { content: ''; position: absolute; left: 16px; right: 16px; bottom: -8px; height: 4px; border-radius: 2px; background: var(--teal2); }
+  .tray { position: absolute; right: 24px; top: 0; bottom: 0; display: flex; align-items: center; gap: 18px; font-size: 16px; color: #dfe; }
+  .tray .clock { text-align: right; line-height: 1.2; }
+  .clover { width: 26px; height: 26px; }
+  .win { position: absolute; border-radius: 14px; background: rgba(14,28,32,.94); border: 1px solid rgba(255,255,255,.12); box-shadow: 0 30px 80px rgba(0,0,0,.55); overflow: hidden; opacity: 0; }
+  .win .bar { height: 46px; display: flex; align-items: center; gap: 12px; padding: 0 18px; font-weight: 600; border-bottom: 1px solid rgba(255,255,255,.08); }
+  .win .bar .dots { margin-left: auto; display: flex; gap: 18px; color: var(--dim); }
+  #dl { left: 380px; top: 150px; width: 900px; height: 560px; }
+  #dl .side { position: absolute; left: 0; top: 46px; bottom: 0; width: 220px; padding: 16px 12px; border-right: 1px solid rgba(255,255,255,.07); font-size: 17px; color: var(--dim); }
+  #dl .side div { padding: 9px 12px; border-radius: 8px; }
+  #dl .side .sel { background: rgba(31,181,163,.2); color: var(--text); }
+  #dl .files { position: absolute; left: 240px; right: 20px; top: 66px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 22px; }
+  #dl .file { text-align: center; font-size: 15px; }
+  #dl .file i { display: block; height: 92px; border-radius: 12px; margin-bottom: 8px; }
+  .card { position: absolute; border-radius: 22px; background: linear-gradient(180deg, rgba(20,44,48,.96), rgba(9,22,25,.96)); border: 1.5px solid rgba(94,240,216,.35); box-shadow: 0 24px 70px rgba(0,0,0,.5), 0 0 30px rgba(31,181,163,.18); opacity: 0; }
+  #timer { left: 560px; top: 250px; width: 520px; height: 300px; text-align: center; padding-top: 40px; }
+  #timer .lbl { color: var(--dim); font-size: 22px; letter-spacing: .08em; text-transform: uppercase; }
+  #timer .big { font: 700 120px var(--display); letter-spacing: 2px; color: #fff; }
+  #timer .prog { position: absolute; left: 50px; right: 50px; bottom: 44px; height: 8px; border-radius: 4px; background: rgba(255,255,255,.1); }
+  #timer .prog b { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; background: var(--teal); }
+  #weather { left: 470px; top: 210px; width: 680px; height: 380px; padding: 40px 50px; }
+  #weather .city { color: var(--dim); font-size: 26px; }
+  #weather .temp { font: 700 150px/1 var(--display); margin-top: 18px; }
+  #weather .desc { font-size: 32px; margin-top: 8px; }
+  #weather svg { position: absolute; right: 40px; top: 70px; width: 260px; height: 260px; }
+  #music { left: 470px; top: 250px; width: 700px; height: 230px; padding: 34px; display: flex; gap: 30px; align-items: center; }
+  #music .cover { width: 160px; height: 160px; border-radius: 18px; background: conic-gradient(from 40deg, #1FB5A3, #6C5CFF, #FF8A3D, #1FB5A3); position: relative; flex: none; }
+  #music .cover::after { content: ''; position: absolute; inset: 52px; border-radius: 50%; background: #0b1b1e; }
+  #music .t1 { font: 700 38px var(--display); } #music .t2 { color: var(--dim); font-size: 24px; margin-top: 6px; }
+  #music .eq { display: flex; gap: 6px; align-items: flex-end; height: 50px; margin-top: 20px; }
+  #music .eq i { width: 10px; border-radius: 3px; background: var(--teal2); }
+  #vol { left: 860px; top: 560px; width: 340px; height: 74px; padding: 20px 26px; display: flex; gap: 18px; align-items: center; }
+  #vol .track { flex: 1; height: 10px; border-radius: 5px; background: rgba(255,255,255,.12); position: relative; }
+  #vol .track b { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 5px; background: var(--teal); }
+  #vol .n { font: 700 26px var(--display); width: 64px; text-align: right; }
+  .bubble { position: absolute; max-width: 560px; padding: 20px 26px 22px; border-radius: 26px; font-size: 30px; line-height: 1.3;
+    background: linear-gradient(180deg, rgba(14,32,36,.96), rgba(7,17,19,.94)); border: 2px solid var(--teal); box-shadow: 0 16px 40px rgba(0,0,0,.5), 0 0 26px rgba(31,181,163,.3); opacity: 0; }
+  .bubble::after { content: ''; position: absolute; right: 120px; bottom: -15px; width: 26px; height: 26px; border-right: 2px solid var(--teal); border-bottom: 2px solid var(--teal); transform: rotate(45deg); background: #08171a; }
+  .bubble .caret { display: inline-block; width: 3px; height: 1em; margin-left: 3px; vertical-align: -4px; background: var(--teal2); }
+  .bubble .think i { display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: var(--teal2); margin-right: 8px; }
+  #caption { position: absolute; left: 50%; bottom: 104px; transform: translateX(-50%); padding: 16px 30px 16px 22px; border-radius: 40px; background: rgba(4,12,14,.82); border: 1px solid rgba(255,255,255,.14); font-size: 34px; display: flex; gap: 18px; align-items: center; opacity: 0; white-space: nowrap; }
+  #caption .mic { width: 52px; height: 52px; border-radius: 50%; background: var(--teal); display: grid; place-items: center; flex: none; }
+  #caption .mic svg { width: 28px; height: 28px; fill: none; stroke: #04201D; stroke-width: 2.4; stroke-linecap: round; }
+  #caption .wave { display: flex; gap: 4px; align-items: center; height: 34px; }
+  #caption .wave i { width: 5px; border-radius: 3px; background: var(--teal2); }
+  #feat { position: absolute; left: 230px; top: 230px; opacity: 1; }
+  #feat .f { display: flex; gap: 22px; align-items: center; font: 600 44px var(--display); margin-bottom: 34px; opacity: 0; text-shadow: 0 4px 20px rgba(0,0,0,.6); }
+  #feat .f svg { width: 56px; height: 56px; flex: none; }
+  #title { position: absolute; left: 140px; top: 330px; opacity: 0; }
+  #title .name { font: 800 190px/0.95 var(--display); letter-spacing: 4px; background: linear-gradient(180deg, #ffffff 30%, #9ff5e8); -webkit-background-clip: text; color: transparent; }
+  #title .tag { font: 500 44px var(--display); color: #bfeee8; margin-top: 18px; max-width: 900px; }
+  #hello { position: absolute; left: 130px; top: 400px; width: 820px; text-align: left; font: 800 104px/1.05 var(--display); opacity: 0; text-shadow: 0 6px 30px rgba(0,0,0,.6); }
+  #hello em { font-style: normal; color: var(--teal2); }
+  #endtxt { position: absolute; left: 130px; top: 250px; opacity: 0; }
+  #endtxt .logo { display: flex; gap: 26px; align-items: center; }
+  #endtxt .logo .ic { width: 120px; height: 120px; border-radius: 30px; background: linear-gradient(180deg, #1FB5A3, #0c6e64); display: grid; place-items: center; box-shadow: 0 12px 40px rgba(31,181,163,.35); }
+  #endtxt .logo .ic svg { width: 84px; height: 84px; }
+  #endtxt .name { font: 800 130px/1 var(--display); letter-spacing: 3px; }
+  #endtxt .tag { font: 500 40px var(--display); color: #bfeee8; margin: 26px 0 40px; }
+  #endtxt .pill { display: inline-block; padding: 18px 34px; border-radius: 40px; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.18); font-size: 34px; margin-bottom: 26px; }
+  #endtxt .cta { display: flex; gap: 18px; align-items: center; width: fit-content; padding: 20px 40px 20px 32px; border-radius: 22px; background: var(--teal); color: #04201D; font: 700 40px var(--display); box-shadow: 0 14px 40px rgba(31,181,163,.45); transform-origin: left center; }
+  #endtxt .cta svg { width: 44px; height: 44px; fill: none; stroke: #04201D; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+  #endtxt .url { margin-top: 20px; font: 600 38px var(--display); color: var(--teal2); letter-spacing: .5px; }
+  #endtxt .small { color: var(--dim); font-size: 26px; margin-top: 22px; }
+  /* «Феликс Link» на телефоне — по разметке MainActivity.kt (цвета, тексты, кнопки как в приложении) */
+  #phone { position: absolute; left: 600px; top: 64px; transform-origin: 50% 0; width: 404px; height: 806px; padding: 12px; border-radius: 52px; background: linear-gradient(160deg, #2b3438, #101619);
+    box-shadow: 0 40px 90px rgba(0,0,0,.6), 0 0 0 2px rgba(255,255,255,.08) inset, 0 0 40px rgba(31,181,163,.18); opacity: 0; }
+  #phone .scr { position: relative; width: 380px; height: 782px; border-radius: 41px; overflow: hidden; background: #071113; font-family: Roboto, 'Segoe UI', sans-serif; color: #E8FBF8; }
+  #phone .sb { height: 34px; display: flex; align-items: center; justify-content: space-between; padding: 6px 26px 0; font-size: 15px; font-weight: 600; }
+  #phone .sb svg { height: 14px; margin-left: 6px; }
+  #phone .cam { position: absolute; left: 50%; top: 11px; width: 14px; height: 14px; margin-left: -7px; border-radius: 50%; background: #050808; box-shadow: 0 0 0 2px #1a2225; }
+  #phone .body { padding: 18px 19px; }
+  #phone .hd0 { display: flex; gap: 15px; align-items: center; }
+  #phone .hd0 img { width: 80px; height: 80px; border-radius: 50%; border: 2px solid #1FB5A3; background: #0E1E21; flex: none; object-fit: cover; }
+  #phone .hd0 b { display: block; font-size: 29px; line-height: 1.15; }
+  #phone .lb { color: #86AFAA; font-size: 13.5px; line-height: 1.35; padding: 4px 0; }
+  #phone .pc { margin-top: 15px; padding: 15px 17px 17px; border-radius: 15px; background: #0E1E21; border: 1px solid #1D3A3D; }
+  #phone .st { color: #4ADE80; font-weight: 700; font-size: 17px; padding-bottom: 8px; }
+  #phone .in { font-size: 18px; padding: 10px 2px 9px; border-bottom: 2px solid #1FB5A3; margin: 2px 0 12px; letter-spacing: .5px; }
+  #phone .in.hint { color: #4F6E6B; border-bottom-color: #2a4a4d; }
+  #phone .bt { height: 46px; border-radius: 10px; background: #163033; color: #fff; display: grid; place-items: center; font-size: 16px; margin-top: 8px; transition: none; }
+  #phone .bt.pr { background: #1FB5A3; color: #04201D; font-weight: 700; }
+  #phone .bt.press { background: #2c5a5e; transform: scale(.96); }
+  #phone .row { display: flex; gap: 8px; } #phone .row .bt { flex: 1; }
+  #phone .hd { font-size: 19px; font-weight: 700; padding-bottom: 2px; }
+  #phone .rep { font-size: 15.5px; line-height: 1.4; padding-top: 10px; min-height: 52px; }
+  #phone .rep .me { color: #86AFAA; } #phone .rep .fx { color: #E8FBF8; }
+  #phone .sheet { position: absolute; left: 0; right: 0; bottom: 0; height: 300px; border-radius: 26px 26px 0 0; background: #1c2a2c; box-shadow: 0 -10px 40px rgba(0,0,0,.5); text-align: center; padding-top: 30px; transform: translateY(320px); }
+  #phone .sheet .t { color: #b9d3cf; font-size: 17px; }
+  #phone .sheet .mic { width: 88px; height: 88px; margin: 28px auto 22px; border-radius: 50%; background: #1FB5A3; display: grid; place-items: center; position: relative; }
+  #phone .sheet .mic::before { content: ''; position: absolute; inset: -14px; border-radius: 50%; border: 3px solid rgba(94,240,216,.45); transform: scale(var(--pulse, 1)); }
+  #phone .sheet .mic svg { width: 40px; height: 40px; fill: none; stroke: #04201D; stroke-width: 2.4; stroke-linecap: round; }
+  #phone .sheet .say { font-size: 22px; padding: 0 24px; min-height: 30px; }
+  #phone .toast { position: absolute; left: 12px; right: 12px; top: 40px; display: flex; gap: 14px; align-items: center; padding: 14px 16px; border-radius: 22px; background: #22312f; border: 1px solid #2f4644; opacity: 0; box-shadow: 0 12px 30px rgba(0,0,0,.5); }
+  #phone .toast .ic { width: 40px; height: 40px; border-radius: 50%; background: #1FB5A3; display: grid; place-items: center; font-family: 'Segoe UI Emoji'; font-size: 22px; flex: none; }
+  #phone .toast small { display: block; color: #86AFAA; font-size: 13px; } #phone .toast b { font-size: 17px; }
+  #phone .emo { font-family: 'Segoe UI Emoji'; }
+  canvas { position: absolute; inset: 0; width: 1920px; height: 1080px; }
+  #flash { position: absolute; inset: 0; background: #dffcf6; opacity: 0; pointer-events: none; }
+  #vignette { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(120% 100% at 50% 50%, transparent 60%, rgba(0,0,0,.45) 100%); }
+</style>
+</head>
+<body>
+<div id="intro" class="layer"></div>
+<div id="end" class="layer"></div>
+<div id="desk" class="layer">
+  <div id="wall"></div>
+  <div class="icons" id="dicons"></div>
+  <div class="win" id="dl"><div class="bar">📁 Загрузки<span class="dots"><span>—</span><span>▢</span><span>✕</span></span></div>
+    <div class="side"><div>Главная</div><div>Рабочий стол</div><div class="sel">Загрузки</div><div>Документы</div><div>Изображения</div><div>Музыка</div></div>
+    <div class="files" id="files"></div></div>
+  <div class="card" id="timer"><div class="lbl">Таймер</div><div class="big" id="tnum">05:00</div><div class="prog"><b id="tprog"></b></div></div>
+  <div class="card" id="weather"><div class="city">Завтра · Москва</div><div class="temp">+4°</div><div class="desc">Небольшой дождь</div><svg viewBox="0 0 48 52" id="wicon"></svg></div>
+  <div class="card" id="music"><div class="cover"></div><div><div class="t1">Lucky Clover</div><div class="t2">Felix Beats</div><div class="eq" id="eq"></div></div></div>
+  <div class="card" id="vol"><svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="#bff" stroke-width="2" stroke-linecap="round"><path d="M4 9.5h3.5L12 5v14l-4.5-4.5H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></svg><div class="track"><b id="volb"></b></div><div class="n" id="voln">40</div></div>
+  <div id="phone"><div class="scr">
+    <div class="cam"></div>
+    <div class="sb"><span>18:31</span><span><svg viewBox="0 0 18 14"><path d="M1 13h2V10H1zM5 13h2V7H5zM9 13h2V4H9zM13 13h2V1h-2z" fill="#E8FBF8"/></svg><svg viewBox="0 0 20 14"><path d="M10 13 1.5 4.5a12 12 0 0 1 17 0z" fill="#E8FBF8"/></svg><svg viewBox="0 0 26 14"><rect x="1" y="1" width="21" height="12" rx="3" fill="none" stroke="#E8FBF8" stroke-width="1.6"/><rect x="3" y="3" width="15" height="8" rx="1.5" fill="#E8FBF8"/><rect x="23" y="5" width="2" height="4" rx="1" fill="#E8FBF8"/></svg></span></div>
+    <div class="body">
+      <div class="hd0"><img src="felix://root/phone/app/src/main/res/drawable-nodpi/felix_head.png" alt=""><div><b>Феликс Link</b><div class="lb">Пульт для Феликса на компьютере: команды, звонки, будильники — по Wi-Fi</div></div></div>
+      <div class="pc"><div class="st">Подключено к «ДОМАШНИЙ-ПК»</div><div class="lb">Код сопряжения — на компьютере: Настройки Феликса → Телефон</div><div class="in">K7QM-2XWP</div><div class="bt pr">Подключить</div><div class="bt">⏻&nbsp; Включить компьютер</div></div>
+      <div class="pc"><div class="hd">Феликс</div><div class="lb">Команда для Феликса на компьютере, например: «какая погода», «что сейчас играет», «следующий трек»</div><div class="in hint">Феликс, …</div>
+        <div class="row"><div class="bt">Отправить</div><div class="bt" id="phMic"><span><span class="emo">🎤</span> Сказать</span></div></div><div class="rep" id="phRep"></div></div>
+    </div>
+    <div class="sheet" id="phSheet"><div class="t">Команда для Феликса</div><div class="mic"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg></div><div class="say" id="phSay"></div></div>
+    <div class="toast" id="phToast"><span class="ic">⏰</span><div><small>Часы · сейчас</small><b>Будильник на 7:00 · Феликс</b></div></div>
+  </div></div>
+  <div class="taskbar"><span id="tb" style="display:flex;gap:14px"></span><div class="tray"><svg class="clover" viewBox="0 0 24 24" id="trayclover"></svg><div class="clock"><div>18:30</div><div style="color:var(--dim);font-size:13px">20.11.2026</div></div></div></div>
+</div>
+<canvas id="gl"></canvas>
+<canvas id="fx"></canvas>
+<div id="hello">Привет! Я Феликс.</div>
+<div id="title"><div class="name">ФЕЛИКС</div><div class="tag">Голосовой 3D-помощник для твоего рабочего стола</div></div>
+<div id="feat"></div>
+<div class="bubble" id="bubble"></div>
+<div id="caption"><span class="mic"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg></span><span id="ctext"></span><span class="wave" id="cwave"></span></div>
+<div id="endtxt"><div class="logo"><div class="ic"><svg viewBox="0 0 24 24" id="endclover"></svg></div><div class="name">ФЕЛИКС</div></div>
+  <div class="tag">Голосовой 3D-помощник для Windows</div>
+  <div class="pill">Скажи «Феликс» — или нажми Win + Y</div>
+  <div class="cta"><svg viewBox="0 0 24 24"><path d="M12 3.5v11.5M7 10.5l5 5 5-5M4.5 19.5h15"/></svg>Скачать бесплатно на GitHub</div>
+  <div class="url">github.com/YatagarasuTS/felix-assistant</div>
+  <div class="small">Windows 10 и 11 · Android 9+ · речь и голос без интернета</div></div>
+<div id="vignette"></div>
+<div id="flash"></div>
+<script type="importmap">{ "imports": { "three": "felix://app/ui/vendor/three.module.js" } }</script>
+<script type="module" src="promo.js"></script>
+</body>
+</html>

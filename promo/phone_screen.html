@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Экран телефона (макет)</title>
+<!-- Вымышленный главный экран Android для снимков окна «Телефон» и ролика: свои значки, без чужих логотипов -->
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; width: 540px; height: 1200px; overflow: hidden; font-family: Roboto, 'Segoe UI', sans-serif; color: #fff; }
+  body { background: radial-gradient(70% 45% at 20% 18%, #1FB5A3 0%, transparent 70%), radial-gradient(60% 40% at 90% 40%, #6C5CFF 0%, transparent 70%), radial-gradient(80% 50% at 40% 100%, #0c6e64 0%, transparent 70%), #0a1a20; }
+  .sb { height: 46px; display: flex; justify-content: space-between; align-items: center; padding: 8px 30px 0; font-size: 20px; font-weight: 600; }
+  .sb svg { height: 17px; margin-left: 8px; }
+  .clock { text-align: center; margin-top: 70px; }
+  .clock b { display: block; font: 300 118px/1 'Segoe UI', sans-serif; letter-spacing: -2px; }
+  .clock span { font-size: 23px; opacity: .9; }
+  .search { margin: 46px 34px 0; height: 66px; border-radius: 33px; background: rgba(255,255,255,.18); backdrop-filter: blur(10px); display: flex; align-items: center; gap: 14px; padding: 0 26px; font-size: 22px; color: rgba(255,255,255,.85); }
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 34px 0; margin: 70px 18px 0; }
+  .app { text-align: center; font-size: 17.5px; text-shadow: 0 1px 3px rgba(0,0,0,.4); }
+  .app i { display: grid; place-items: center; width: 86px; height: 86px; margin: 0 auto 10px; border-radius: 26px; font: normal 46px 'Segoe UI Emoji'; box-shadow: 0 6px 16px rgba(0,0,0,.3); overflow: hidden; }
+  .app i img { width: 100%; height: 100%; object-fit: cover; }
+  .dock { position: absolute; left: 22px; right: 22px; bottom: 62px; height: 122px; border-radius: 40px; background: rgba(255,255,255,.14); display: flex; justify-content: space-around; align-items: center; }
+  .dock i { display: grid; place-items: center; width: 86px; height: 86px; border-radius: 26px; font: normal 44px 'Segoe UI Emoji'; }
+  .nav { position: absolute; left: 50%; bottom: 20px; width: 150px; height: 6px; margin-left: -75px; border-radius: 3px; background: rgba(255,255,255,.8); }
+</style>
+</head>
+<body>
+  <div class="sb"><span>18:31</span><span><svg viewBox="0 0 18 14"><path d="M1 13h2V10H1zM5 13h2V7H5zM9 13h2V4H9zM13 13h2V1h-2z" fill="#fff"/></svg><svg viewBox="0 0 20 14"><path d="M10 13 1.5 4.5a12 12 0 0 1 17 0z" fill="#fff"/></svg><svg viewBox="0 0 26 14"><rect x="1" y="1" width="21" height="12" rx="3" fill="none" stroke="#fff" stroke-width="1.6"/><rect x="3" y="3" width="15" height="8" rx="1.5" fill="#fff"/><rect x="23" y="5" width="2" height="4" rx="1" fill="#fff"/></svg></span></div>
+  <div class="clock"><b>18:31</b><span>суббота, 21 ноября · +4°</span></div>
+  <div class="search">🔍 Поиск</div>
+  <div class="grid">
+    <div class="app"><i style="background:linear-gradient(160deg,#ffb347,#ff7a3d)">🍕</i>Доставка</div>
+    <div class="app"><i style="background:linear-gradient(160deg,#ffe066,#f5b700)">🚕</i>Такси</div>
+    <div class="app"><i style="background:linear-gradient(160deg,#6fe3a3,#1f9d63)">🗺️</i>Карты</div>
+    <div class="app"><i style="background:linear-gradient(160deg,#a79bff,#6C5CFF)">🎵</i>Музыка</div>
+    <div class="app"><i style="background:linear-gradient(160deg,#7cc4ff,#2c8fd6)">🛒</i>Магазин</div>
+    <div class="app"><i style="background:linear-gradient(160deg,#ff9bb8,#d9577f)">🖼️</i>Фото</div>
+    <div class="app"><i style="background:linear-gradient(160deg,#b8c7d1,#5d7584)">📷</i>Камера</div>
+    <div class="app"><i style="background:linear-gradient(160deg,#9ff5e8,#1FB5A3)"><img src="../phone/app/src/main/res/drawable-nodpi/felix_head.png" alt=""></i>Феликс Link</div>
+    <div class="app"><i style="background:linear-gradient(160deg,#ffd27a,#e0a53a)">📅</i>Календарь</div>
+    <div class="app"><i style="background:linear-gradient(160deg,#8ad0ff,#3b82f6)">⛅</i>Погода</div>
+    <div class="app"><i style="background:linear-gradient(160deg,#ff8f8f,#e5383b)">✉️</i>Почта</div>
+    <div class="app"><i style="background:linear-gradient(160deg,#c9d3d8,#7b8a91)">⚙️</i>Настройки</div>
+  </div>
+  <div class="dock"><i style="background:#3fbf6a">📞</i><i style="background:#2c8fd6">💬</i><i style="background:#ff8a3d">🌐</i><i style="background:#7a6cff">🎧</i></div>
+  <div class="nav"></div>
+</body>
+</html>
