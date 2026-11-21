@@ -16,4 +16,7 @@ if (-not $Repo) { $Repo = "$owner/felix-assistant" }
 $title = 'Феликс ' + ($Version -replace '\.0$', '')
 & $Gh release create "v$Version" @assets --repo $Repo --title $title --notes-file $notes --latest
 if ($LASTEXITCODE) { throw 'release create failed' }
-& $Gh release view "v$Version" --repo $Repo --json url,assets -q '.url, (.assets[] | "\(.name)  \(.size)  \(.state)")'
+# сводка (без -q с кавычками: PowerShell 5.1 ломает такие аргументы)
+$rel = & $Gh release view "v$Version" --repo $Repo --json url,assets | ConvertFrom-Json
+Write-Output $rel.url
+$rel.assets | ForEach-Object { Write-Output ("  {0}  {1:N0} МБ  {2}" -f $_.name, ($_.size / 1MB), $_.state) }
