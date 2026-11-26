@@ -19,6 +19,8 @@ const DEFAULTS = {
   theme: { preset: 'mint', accent: '#1FB5A3', radius: 14 },
   assistant: {
     enabled: true, scale: 1.0, side: 'right', lift: 8,
+    at: { x: null, y: null },   // куда Феликса перетащили мышью: точка под ногами (экран, DIP); null — угол по side
+    dance: true,                // пританцовывать, когда на компьютере играет музыка
     voice: 'piper', pitch: 1.0, volume: 0.9, voiceSpeaker: 0,
     voiceHttp: { url: '', body: '', headers: '' },   // свой ИИ-голос: адрес ({text} — фраза), тело POST, заголовки «Имя: значение»
     mic: true, micDevice: 0, wake: true, winY: true, idle: true, idleMinutes: 10, minimized: false, subtitles: true

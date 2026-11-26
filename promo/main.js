@@ -29,7 +29,7 @@ app.whenReady().then(async () => {
   const log = s => fs.appendFileSync(path.join(PROMO, 'render.log'), new Date().toISOString() + ' ' + s + '\n');
   fs.writeFileSync(path.join(PROMO, 'render.log'), '');
   // размер кадра: у вертикальной сцены — 1080×1920, у старой — 1920×1080
-  const [W, H] = (arg('--size', /vert|wardrobe/.test(PAGE) ? '1080x1920' : '1920x1080')).split('x').map(Number);
+  const [W, H] = (arg('--size', /vert|wardrobe|live/.test(PAGE) ? '1080x1920' : '1920x1080')).split('x').map(Number);
   const strips = Math.ceil(H / STRIP), SH = Math.ceil(H / strips);
   const win = new BrowserWindow({ width: W, height: SH, show: false, useContentSize: true, frame: false,
     webPreferences: { offscreen: true, backgroundThrottling: false, contextIsolation: false } });

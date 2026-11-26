@@ -12,7 +12,7 @@ const { Core } = require('./lib/core');
 const { Input } = require('./lib/input');
 const { Tts } = require('./lib/tts');
 const { Llm, explain } = require('./lib/llm');
-const { Link, newCode, normCode, APK_PORT, PORT: LINK_PORT, DISC_PORT } = require('./lib/link');
+const { Link, newCode, normCode, APK_PORT, PORT: LINK_PORT, DISC_PORT, VIDEO_PORT } = require('./lib/link');
 const brain = require('./lib/brain');
 const phoneapps = require('./lib/phoneapps');
 const WCAT = require('./ui/wardrobe-catalog.json');
@@ -91,17 +91,87 @@ function baseWin(opts) {
 const load = (w, page, query = {}) => w.loadURL(`felix://app/ui/${page}?${new URLSearchParams(query)}`);
 
 const HEADROOM = 150;   // место над головой под облачко с текстом
+const FOOT_K = side => (side === 'left' ? 0.36 : 0.64);      // где ноги Феликса по ширине его окна (как homeFoot в assistant.js)
 function assistantRect() {
-  const d = primary(), wa = d.workArea;
   const a = cfg.get().assistant;
+  const placed = a.at && a.at.x != null && a.at.y != null;   // перетащили мышью — на тот экран и в то место
+  const d = placed ? screen.getDisplayNearestPoint({ x: Math.round(a.at.x), y: Math.round(a.at.y) }) : primary(), wa = d.workArea;
   const s = a.scale || 1;
   const height = Math.round(Math.max(330, Math.min(560, wa.height * 0.46)) * s);
   const width = Math.round(height * 0.95);
   const lift = Math.max(0, Math.min(400, Number(a.lift ?? 8)));
   const bottom = wa.y + wa.height - lift;
-  const x = a.side === 'left' ? wa.x + 6 : wa.x + wa.width - width - 6;
+  let x = a.side === 'left' ? wa.x + 6 : wa.x + wa.width - width - 6;
+  if (placed) x = Math.round(Math.max(wa.x - width * 0.25, Math.min(wa.x + wa.width - width * 0.75, a.at.x - width * FOOT_K(a.side))));
   return { x, y: bottom - height - HEADROOM, width, height: height + HEADROOM };
 }
+
+// ---------------------------------------------------------------- перетаскивание Феликса мышью
+// Схватил — окно Феликса едет за курсором (он висит и болтает ногами), отпустил — падает на «пол» над панелью задач,
+// отскакивает и остаётся там: место запоминается (assistant.at), сторона — по половине экрана.
+let dragSt = null, dragT = null, fallT = null, testCursor = null;
+const cursorPt = () => testCursor || screen.getCursorScreenPoint();     // testCursor — только автопроверка (FELIX_TEST)
+function dragStart() {
+  const w = W.assistant;
+  if (!w || w.isDestroyed() || idlePlaying || cfg.get().assistant.minimized) return false;
+  clearInterval(fallT); fallT = null; clearInterval(dragT);
+  const c = cursorPt(), b = w.getBounds();
+  dragSt = { dx: c.x - b.x, dy: c.y - b.y, w: b.width, h: b.height, last: c, t: Date.now(), started: Date.now(), vx: 0, vy: 0 };
+  ignoreMouse(w, false);
+  dragT = setInterval(dragFollow, 16);
+  return true;
+}
+function dragFollow() {
+  const w = W.assistant;
+  if (!dragSt || !w || w.isDestroyed()) return dragEnd();
+  const c = cursorPt(), now = Date.now(), dt = Math.max(8, now - dragSt.t) / 1000;
+  dragSt.vx = dragSt.vx * 0.5 + ((c.x - dragSt.last.x) / dt) * 0.5; dragSt.vy = dragSt.vy * 0.5 + ((c.y - dragSt.last.y) / dt) * 0.5;
+  dragSt.last = c; dragSt.t = now;
+  w.setBounds({ x: c.x - dragSt.dx, y: c.y - dragSt.dy, width: dragSt.w, height: dragSt.h });
+  send(w, 'drop', { phase: 'drag', vx: Math.round(dragSt.vx), vy: Math.round(dragSt.vy) });
+  if (now - dragSt.started > 30000) dragEnd();                 // страховка: кнопку отпустили, а событие потерялось
+}
+function dragEnd() {
+  clearInterval(dragT); dragT = null;
+  const w = W.assistant, st = dragSt; dragSt = null;
+  if (!w || w.isDestroyed() || !st) return;
+  const b = w.getBounds(), a = cfg.get().assistant;
+  const footX = () => w.getBounds().x + b.width * FOOT_K(a.side);
+  const d = screen.getDisplayNearestPoint({ x: Math.round(footX()), y: b.y + b.height - 10 }), wa = d.workArea;
+  const lift = Math.max(0, Math.min(400, Number(a.lift ?? 8)));
+  const floorY = wa.y + wa.height - lift - b.height, minX = wa.x - b.width * 0.25, maxX = wa.x + wa.width - b.width * 0.75;
+  let x = b.x, y = b.y, vx = Math.max(-1800, Math.min(1800, st.vx * 0.6)), vy = Math.max(-1500, Math.min(1800, st.vy * 0.6)), bounces = 0, t = Date.now();
+  const high = floorY - y;
+  send(w, 'drop', { phase: 'fall' });
+  fallT = setInterval(() => {
+    if (w.isDestroyed()) { clearInterval(fallT); fallT = null; return; }
+    const now = Date.now(), dt = Math.min(0.05, (now - t) / 1000); t = now;
+    vy += 2800 * dt; vx *= Math.exp(-dt * 1.5);
+    x += vx * dt; y += vy * dt;
+    if (x < minX) { x = minX; vx = Math.abs(vx) * 0.4; } else if (x > maxX) { x = maxX; vx = -Math.abs(vx) * 0.4; }
+    if (y >= floorY) {
+      y = floorY;
+      const speed = vy;
+      if (speed > 700 && bounces < 2) { vy = -speed * 0.28; bounces++; send(w, 'drop', { phase: 'bounce', speed: Math.round(speed) }); }
+      else {
+        clearInterval(fallT); fallT = null;
+        w.setBounds({ x: Math.round(x), y: Math.round(y), width: b.width, height: b.height });
+        // где теперь ноги — туда и ставим в следующий раз; сторона — по половине экрана
+        const side = x + b.width / 2 < wa.x + wa.width / 2 ? 'left' : 'right';
+        const fx = x + b.width * FOOT_K(a.side);                  // ноги сейчас (окно потом подвинется под новую сторону)
+        cfg.patch({ assistant: { side, at: { x: Math.round(fx), y: Math.round(wa.y + wa.height - 1) } } });
+        broadcast('config', { config: cfg.get(), theme: themeVars() });
+        layoutAssistant();
+        send(w, 'drop', { phase: 'land', speed: Math.round(speed), high: Math.round(high) });
+        ignoreMouse(w, true); send(w, 'mouse:sync', true);
+        if (high > 260 && Date.now() - droppedSaidAt > 40000) { droppedSaidAt = Date.now(); setTimeout(() => say(brain.pick(brain.SAY.dropped), { anim: 'happy', emotion: 'happy' }), 1300); }
+        return;
+      }
+    }
+    w.setBounds({ x: Math.round(x), y: Math.round(y), width: b.width, height: b.height });
+  }, 16);
+}
+let droppedSaidAt = 0;
 
 function createAssistant() {
   if (!cfg.get().assistant.enabled || W.assistant) return;
@@ -306,7 +376,9 @@ async function handle(p, raw) {
       applyConfig({ assistant: { scale: s } });
       return say(p.delta > 0 ? 'Подрос!' : 'Уменьшился.', { emotion: 'happy' });
     }
-    case 'self.dance': return say(pick(S.dance), { anim: 'happy', emotion: 'happy' });
+    case 'self.dance':                                      // настоящий танец на 10 секунд (если музыка не играет — потом сам остановится)
+      if (fxShown({ kind: 'dance', on: true })) setTimeout(() => { if (!danceOn) send(W.assistant, 'fx', { kind: 'dance', on: false }); }, 10000);
+      return say(pick(S.dance), { emotion: 'happy' });
     case 'self.wave': return say(pick(S.wave), { anim: 'wave', emotion: 'happy' });
     case 'theme': {
       if (!p.theme) return say('Какую тему поставить? Есть мята, полночь, закат, сакура, угли и снег.');
@@ -382,8 +454,17 @@ async function handle(p, raw) {
     case 'calc':
       if (p.result === null || !isFinite(p.result)) return say('Не смог посчитать. Скажи, например: сколько будет двенадцать умножить на семь.', { anim: 'think' });
       return say(`${p.expr} — это ${brain.sayNumber(p.result)}.`);
-    case 'coin': return say(Math.random() < 0.5 ? 'Орёл!' : 'Решка!', { anim: 'happy', emotion: 'happy' });
-    case 'dice': return say(`Выпало ${1 + Math.floor(Math.random() * 6)}.`, { anim: 'happy' });
+    // монетка и кубик — настоящие, в 3D: Феликс подбрасывает, результат объявляет, когда упадёт
+    case 'coin': {
+      const heads = Math.random() < 0.5;
+      if (fxShown({ kind: 'coin', result: heads ? 'heads' : 'tails' })) return setTimeout(() => say(heads ? 'Орёл!' : 'Решка!', { anim: 'happy', emotion: 'happy' }), 2100);
+      return say(heads ? 'Орёл!' : 'Решка!', { anim: 'happy', emotion: 'happy' });
+    }
+    case 'dice': {
+      const n = 1 + Math.floor(Math.random() * 6);
+      if (fxShown({ kind: 'dice', result: n })) return setTimeout(() => say(`Выпало ${n}!`, { anim: 'happy', emotion: n === 6 ? 'happy' : 'neutral' }), 2300);
+      return say(`Выпало ${n}.`, { anim: 'happy' });
+    }
     case 'random': {
       const lo = Math.min(p.from ?? 1, p.to ?? 100), hi = Math.max(p.from ?? 1, p.to ?? 100);
       return say(`Загадал: ${lo + Math.floor(Math.random() * (hi - lo + 1))}.`, { emotion: 'happy' });
@@ -630,6 +711,13 @@ async function openTarget(target, opts = {}) {
   if (!apps.length) await loadApps();
   const a = brain.matchApp(target, apps);
   if (a) { await launch(appItem(a)); return opts.silent ? null : say(brain.pick(brain.SAY.opened(a.name))); }
+  // на компьютере нет — телефон на связи: «покупки», «такси», «доставка» — дела телефона, иначе приложение телефона с таким именем
+  if (link && link.connected && !opts.silent) {
+    const kind = brain.serviceWord(target);
+    if (kind) return phoneService(kind, {});
+    const r = await link.request('open', { names: brain.candidates(target) }, 8000);
+    if (r && r.ok) return say(`На компьютере такого нет — открыл на телефоне ${r.text || target}.`);
+  }
   return say(brain.pick(brain.SAY.notFound(target)), { anim: 'think' });
 }
 async function closeTarget(target) {
@@ -765,9 +853,26 @@ async function homeCity() { const w = cfg.get().weather; return w.lat != null ? 
 function askCity() { openSettings('general'); return say('Сначала скажи мне свой город: я открыл настройки. Или спроси, например: погода в Казани.'); }
 async function forecast(lat, lon) {
   try {
-    const u = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset&timezone=auto&forecast_days=3&wind_speed_unit=ms`;
+    const u = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m,is_day&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset&timezone=auto&forecast_days=3&wind_speed_unit=ms`;
     return await (await net.fetch(u)).json();
   } catch (e) { log('forecast', e.message); return null; }
+}
+/** Код погоды WMO → что рисовать над Феликсом */
+function skyOf(code, day) {
+  if (code === 0) return day ? 'sun' : 'moon';
+  if (code <= 2) return day ? 'partly' : 'cloud';
+  if (code === 3) return 'cloud';
+  if (code <= 48) return 'fog';
+  if (code <= 67 || (code >= 80 && code <= 82)) return 'rain';
+  if (code <= 77 || code === 85 || code === 86) return 'snow';
+  return 'storm';
+}
+/** Эффект в окне Феликса (погода, монетка, кубик, танец) — если он на экране */
+function fxShown(fx) {
+  const w = W.assistant, a = cfg.get().assistant;
+  if (!w || w.isDestroyed() || !w.isVisible() || a.minimized || idlePlaying) return false;
+  send(w, 'fx', fx);
+  return true;
 }
 async function weatherSay(p) {
   let place, lat, lon;
@@ -781,10 +886,12 @@ async function weatherSay(p) {
   if (!p.day) {
     const c = f.current, pp = f.daily.precipitation_probability_max[0];
     const deg = Math.round(c.temperature_2m), wind = Math.round(c.wind_speed_10m);
+    fxShown({ kind: 'weather', sky: skyOf(c.weather_code, c.is_day !== 0), temp: deg, wind });
     return say(`В городе ${place} сейчас ${deg} ${brain.plural(deg, 'градус', 'градуса', 'градусов')}, ${(WMO[c.weather_code] || '').toLowerCase()}. Ощущается как ${Math.round(c.apparent_temperature)}. Ветер ${wind} ${brain.plural(wind, 'метр', 'метра', 'метров')} в секунду${pp >= 40 ? `, вероятность осадков ${pp} ${brain.plural(pp, 'процент', 'процента', 'процентов')}` : ''}.`);
   }
   const d = f.daily, i = p.day;
   const hi = Math.round(d.temperature_2m_max[i]), pr = d.precipitation_probability_max[i] ?? 0;
+  fxShown({ kind: 'weather', sky: skyOf(d.weather_code[i], true), temp: hi });
   return say(`${i === 1 ? 'Завтра' : 'Послезавтра'} в городе ${place} ${(WMO[d.weather_code[i]] || '').toLowerCase()}, от ${Math.round(d.temperature_2m_min[i])} до ${hi} ${brain.plural(hi, 'градуса', 'градусов', 'градусов')}. Вероятность осадков ${pr} ${brain.plural(pr, 'процент', 'процента', 'процентов')}.`);
 }
 let rates = null;
@@ -924,7 +1031,16 @@ async function mediaControl(action) {
     if (key) core.safe('keys', { keys: [key] });
     return say(action === 'info' ? 'Не могу узнать, что сейчас играет.' : 'Готово.');
   }
-  if (r.status === 'none') return say('Сейчас ничего не играет. Скажи, например: включи трек Группа крови.');
+  if (r.status === 'none') {
+    // «включи музыку», а плеера нет — открываем музыкальный сервис из настроек (там «Моя волна» / «Мой микс»)
+    if (action === 'play' || action === 'toggle') {
+      const ya = cfg.get().music === 'yandex';
+      say(ya ? 'Сейчас ничего не играет — открываю Яндекс Музыку. Нажми «Моя волна».' : 'Сейчас ничего не играет — открываю YouTube Music.', { emotion: 'happy' });
+      setTimeout(() => shell.openExternal(ya ? 'https://music.yandex.ru/' : 'https://music.youtube.com/'), 1200);
+      return;
+    }
+    return say('Сейчас ничего не играет. Скажи, например: включи трек Группа крови.');
+  }
   const what = r.title ? `«${r.title}»${r.artist ? ', ' + r.artist : ''}` : '';
   switch (action) {
     case 'pause': return say('Пауза.');
@@ -951,6 +1067,11 @@ function startLink() {
   link.on('battery', () => phoneStatusChanged());
   link.on('call', onPhoneCall);
   link.on('notif', m => { if (cfg.get().phone.notifs) send(W.assistant, 'notice', { title: `${m.app}: ${m.title}`, text: m.text }); });
+  // экран телефона видеопотоком: кадры — сразу в окно «Телефон»
+  link.on('video', f => send(W.phone, 'phone:video', f));
+  link.on('video-end', () => send(W.phone, 'phone:cast', { state: 'stopped' }));
+  // «остановлено» от прошлой трансляции (её пропуск уже не действует) новую не трогает
+  link.on('cast', m => { if (m.state === 'stopped' && m.token && m.token !== link.castToken) return; send(W.phone, 'phone:cast', m); });
   link.on('felix', text => {
     phoneOrigin = Date.now();
     log('phone cmd', text);
@@ -1028,7 +1149,7 @@ function allowFirewall() {
   const exe = process.execPath;
   const cmds = [
     `netsh advfirewall firewall delete rule name="${FW_RULE}"`,
-    `netsh advfirewall firewall add rule name="${FW_RULE}" dir=in action=allow protocol=TCP localport=${LINK_PORT},${APK_PORT} remoteip=localsubnet profile=any program="${exe}"`,
+    `netsh advfirewall firewall add rule name="${FW_RULE}" dir=in action=allow protocol=TCP localport=${LINK_PORT},${APK_PORT},${VIDEO_PORT} remoteip=localsubnet profile=any program="${exe}"`,
     `netsh advfirewall firewall add rule name="${FW_RULE}" dir=in action=allow protocol=UDP localport=${DISC_PORT} remoteip=localsubnet profile=any program="${exe}"`
   ].join(' & ');
   return new Promise(res => execFile('powershell.exe', ['-NoProfile', '-Command', `Start-Process cmd -Verb RunAs -Wait -WindowStyle Hidden -ArgumentList '/c ${cmds.replace(/'/g, "''")}'`],
@@ -1039,7 +1160,8 @@ function firewallAllowed() {
   return new Promise(res => execFile('netsh', ['advfirewall', 'firewall', 'show', 'rule', 'name=all', 'dir=in', 'verbose'], { windowsHide: true, maxBuffer: 64 << 20, timeout: 20000 }, (err, out) => {
     if (err && !out) return res(false);
     const exe = process.execPath.toLowerCase();
-    res(String(out).split(/\r?\n\s*\r?\n/).some(b => { const s = b.toLowerCase(); return s.includes(exe) && /(action|действие):\s+(allow|разрешить)/.test(s) && /(enabled|включен\S*):\s+(yes|да)/.test(s); }));
+    // правило должно пускать и порт видеотрансляции (старое правило Феликса 1.0–1.2 было без него)
+    res(String(out).split(/\r?\n\s*\r?\n/).some(b => { const s = b.toLowerCase(); return s.includes(exe) && /(action|действие):\s+(allow|разрешить)/.test(s) && /(enabled|включен\S*):\s+(yes|да)/.test(s) && (!/(localport|локальный порт)/.test(s) || /(47893|any|любой)/.test(s)); }));
   }));
 }
 
@@ -1113,6 +1235,7 @@ async function phoneHandle(p) {
       return phoneService(route ? 'maps' : 'taxi', { dest: pl.dest, phrase: pl.phrase, route });
     }
     case 'phone.shop': {
+      if (p.open) return link && link.connected ? phoneService('shop', {}) : openTarget(p.target || 'покупки');   // «открой покупки» — приложение магазина
       if (!p.query) return say('Что найти?');
       if (!phoneReady()) return;
       const pkg = phoneapps.storePkg(p.store);
@@ -1375,7 +1498,7 @@ function saveSelfie(dataUrl) {
   } catch (e) { log('selfie', e.message); return say('Не получилось сохранить снимок.'); }
 }
 let pettedAt = 0;
-function onPetted() { if (Date.now() - pettedAt < 15000) return; pettedAt = Date.now(); say(brain.pick(brain.SAY.petted), { anim: 'shy', emotion: 'shy' }); }
+function onPetted() { if (Date.now() - pettedAt < 15000 || speaking) return; pettedAt = Date.now(); log('petted'); say(brain.pick(brain.SAY.petted), { anim: 'talk', emotion: 'happy' }); }
 
 // ---------------------------------------------------------------- игры: камень-ножницы-бумага, угадай число, загадки
 let pendingGame = null;
@@ -1484,7 +1607,12 @@ function setReminder(kind, on) {
 
 // ---------------------------------------------------------------- окно «Телефон»: экран телефона на компьютере, кнопки, приложения, дела
 function openPhonePanel() {
-  if (W.phone && !W.phone.isDestroyed()) { W.phone.show(); W.phone.focus(); return; }
+  if (W.phone && !W.phone.isDestroyed()) {      // уже открыто — развернуть (свёрнутое окно show() не разворачивает) и вывести вперёд
+    const w = W.phone;
+    if (w.isMinimized()) w.restore();
+    w.show(); w.setAlwaysOnTop(true); w.focus(); w.moveTop(); setTimeout(() => { if (!w.isDestroyed()) w.setAlwaysOnTop(false); }, 400);
+    return;
+  }
   const wa = primary().workArea;
   const h = Math.min(880, wa.height - 40), w = Math.min(wa.width - 40, Math.round(h * 0.5) + 400);
   const win = W.phone = new BrowserWindow({
@@ -1494,8 +1622,14 @@ function openPhonePanel() {
   });
   win.setMenu(null);
   load(win, 'phone.html');
-  win.once('ready-to-show', () => win.show());
-  win.on('closed', () => { if (W.phone === win) delete W.phone; });
+  // голосом окно открывают, пока на переднем плане другая программа — Windows не даёт просто так вывести окно вперёд
+  win.once('ready-to-show', () => { win.show(); win.setAlwaysOnTop(true); win.focus(); win.moveTop(); setTimeout(() => { if (!win.isDestroyed()) win.setAlwaysOnTop(false); }, 400); });
+  win.on('minimize', () => send(win, 'phone:cast', { state: 'minimized' }));
+  win.on('restore', () => send(win, 'phone:cast', { state: 'restored' }));
+  win.on('closed', () => {
+    if (W.phone === win) delete W.phone;
+    if (link && link.castToken) { link.castClose(); if (link.connected) link.request('cast', { on: false }, 5000).catch(() => { }); }   // трансляция без окна не нужна
+  });
 }
 
 // ---------------------------------------------------------------- состояние Феликса
@@ -1520,6 +1654,20 @@ function onForeground(e) {
 }
 
 // если 10 минут никого нет — Феликс гуляет по рабочему столу, заглядывает в папки и засыпает
+// ---------------------------------------------------------------- танец: на компьютере играет музыка — Феликс пританцовывает
+let danceOn = false;
+function startDanceWatch() {
+  setInterval(async () => {
+    const a = cfg.get().assistant, w = W.assistant;
+    let on = false;
+    if (a.dance && w && !w.isDestroyed() && w.isVisible() && !a.minimized && !idlePlaying && input && input.ready) {
+      const r = await input.media('info');
+      on = !!(r && r.status === 'Playing');
+    }
+    if (on || on !== danceOn) send(W.assistant, 'fx', { kind: 'dance', on });   // «включён» — каждый раз: окно могло пересоздаться
+    if (on !== danceOn) { danceOn = on; log('dance', on ? 'on' : 'off'); }
+  }, 4000);
+}
 function startIdleWatch() {
   setInterval(async () => {
     const a = cfg.get().assistant;
@@ -1563,6 +1711,7 @@ async function applyConfig(patch) {
     if (patch.assistant.enabled === true && !W.assistant) createAssistant();
     if (patch.assistant.mic !== undefined || patch.assistant.micDevice !== undefined) startMic();
     if (patch.assistant.winY !== undefined) core.safe('hotkeys', { winY: !!c.assistant.winY });
+    if (patch.assistant.side !== undefined && !patch.assistant.at) cfg.patch({ assistant: { at: { x: null, y: null } } });   // сторону выбрали в настройках — снова в угол
     if (patch.assistant.scale !== undefined || patch.assistant.lift !== undefined || patch.assistant.side !== undefined) setTimeout(layoutAssistant, 30);
     refreshTray();
   }
@@ -1613,6 +1762,18 @@ function wireIpc() {
   ipcMain.handle('phone:catalog', () => Object.fromEntries(phoneapps.KINDS.map(k => { const c = phoneapps.CATS[k]; return [k, { name: c.name, icon: c.icon, apps: c.apps.map(([pkg, name]) => ({ pkg, name })) }]; })));
   ipcMain.handle('phone:suggest', async () => { const list = (await phoneAppList()) || []; return Object.fromEntries(phoneapps.KINDS.map(k => [k, phoneapps.suggest(k, list)])); });
   ipcMain.handle('phone:panel', () => openPhonePanel());
+  // видеотрансляция экрана и касания «вживую» (Феликс Link 1.2+)
+  ipcMain.handle('phone:cast', async (e, on) => {
+    if (!link || !link.connected) return { ok: false, text: 'нет связи' };
+    if (!on) { link.castClose(); const r = await link.request('cast', { on: false }, 5000); return { ok: !!(r && r.ok) }; }
+    const token = link.castOpen();
+    const r = await link.request('cast', { on: true, port: VIDEO_PORT, token, maxSize: 1280, fps: 60, bitrate: 6000000 }, 8000);
+    if (!r || !r.ok) { link.castClose(); return { ok: false, text: (r && r.text) || 'телефон не ответил' }; }
+    return { ok: true, state: (r.data && r.data.state) || r.text };
+  });
+  ipcMain.handle('phone:castkey', () => (link && link.connected ? link.request('castkey', {}, 3000) : null));
+  ipcMain.handle('phone:touch', (e, a, x, y) => { if (link && link.connected) link.send({ t: 'touch', a: String(a), x: +x, y: +y }); });
+  ipcMain.handle('phone:stats', (e, s) => { if (s && s.log) log('phone panel', String(s.mode).slice(0, 20), s.mode === 'cast' ? String(s.fps).slice(0, 120) : s.fps + ' fps', String(s.size || '').slice(0, 20)); });
   ipcMain.handle('phone:service', (e, kind, args) => {
     if (!phoneapps.CATS[kind]) return null;
     args = args || {};
@@ -1640,6 +1801,7 @@ function wireIpc() {
   ipcMain.handle('model', () => fileUrl(path.join(HOME, 'models', 'felix.vrm')));
   ipcMain.handle('felix:clicked', () => callFelix());
   ipcMain.handle('felix:petted', () => onPetted());
+  ipcMain.handle('felix:drag', (e, phase) => (phase === 'start' ? dragStart() : dragEnd()));
   ipcMain.handle('felix:selfie', (e, dataUrl) => saveSelfie(dataUrl));
   // гардероб из настроек: те же анимации, что и голосом
   ipcMain.handle('wardrobe:catalog', () => WCAT);
@@ -1742,6 +1904,7 @@ app.whenReady().then(async () => {
   screen.on('display-added', () => setTimeout(layoutAssistant, 300));
   screen.on('display-removed', () => setTimeout(layoutAssistant, 300));
   startIdleWatch();
+  startDanceWatch();
   startReminders();
 
   if (!cfg.get().firstRun) setTimeout(() => {
@@ -1750,7 +1913,55 @@ app.whenReady().then(async () => {
   // праздничная вещь — после приветствия; и раз в час (если Феликс работает в полночь)
   setTimeout(() => { if (!cfg.get().firstRun) holidayCheck(); }, 11000);
   setInterval(() => { if (!cfg.get().firstRun && powerMonitor.getSystemIdleTime() < 300) holidayCheck(); }, 3600000);
+  if (process.env.FELIX_TEST) testHook(process.env.FELIX_TEST);
 });
+
+// ---------------------------------------------------------------- только для автопроверок (FELIX_TEST=<пароль>)
+// Локальный порт 47898: проверка шлёт строки JSON {key, c, win, …} — «мышь» в окне, снимок окна, значение из окна.
+function testHook(key) {
+  const netm = require('net');
+  const winOf = n => { const w = n === 'phone' ? W.phone : W[n]; return w && !w.isDestroyed() ? w : null; };
+  const run = async m => {
+    const w = winOf(m.win);
+    if (m.c === 'open') { if (m.win === 'phone') openPhonePanel(); return true; }
+    if (!w) return { error: 'нет окна ' + m.win };
+    if (m.c === 'bounds') return w.getBounds();
+    if (m.c === 'js') return w.webContents.executeJavaScript(String(m.expr));
+    if (m.c === 'shot') { const img = await w.webContents.capturePage(); fs.writeFileSync(m.file, img.toPNG()); return true; }
+    // «мышь» в экранных координатах: событие в окно + подменённый курсор для перетаскивания (настоящий не трогаем)
+    if (m.c === 'mouse') {
+      if (m.type === 'release') { testCursor = null; return true; }
+      const b = w.getBounds();
+      testCursor = { x: Math.round(m.sx), y: Math.round(m.sy) };
+      w.webContents.sendInputEvent({ type: m.type, x: Math.round(m.sx - b.x), y: Math.round(m.sy - b.y), globalX: Math.round(m.sx), globalY: Math.round(m.sy), button: 'left', clickCount: 1 });
+      return true;
+    }
+    if (m.c === 'drag') {   // путь в долях элемента sel: [[x,y], …], шаг ms
+      const r = await w.webContents.executeJavaScript(`(() => { const r = document.querySelector(${JSON.stringify(m.sel)}).getBoundingClientRect(); return [r.left, r.top, r.width, r.height]; })()`);
+      const pt = ([fx, fy]) => ({ x: Math.round(r[0] + fx * r[2]), y: Math.round(r[1] + fy * r[3]) });
+      const ev = (type, p) => w.webContents.sendInputEvent({ type, ...p, button: 'left', clickCount: 1 });
+      ev('mouseMove', pt(m.path[0])); ev('mouseDown', pt(m.path[0]));
+      for (const p of m.path.slice(1)) { await new Promise(r => setTimeout(r, m.ms || 16)); ev('mouseMove', pt(p)); }
+      ev('mouseUp', pt(m.path[m.path.length - 1]));
+      return true;
+    }
+    return { error: 'нет команды ' + m.c };
+  };
+  netm.createServer(s => {
+    let buf = '';
+    s.on('data', d => {
+      buf += d; let i;
+      while ((i = buf.indexOf('\n')) >= 0) {
+        const line = buf.slice(0, i); buf = buf.slice(i + 1);
+        let m; try { m = JSON.parse(line); } catch { continue; }
+        if (m.key !== key) { s.destroy(); return; }
+        Promise.resolve(run(m)).then(v => s.write(JSON.stringify({ id: m.id, v }) + '\n'), e => s.write(JSON.stringify({ id: m.id, error: e.message }) + '\n'));
+      }
+    });
+    s.on('error', () => { });
+  }).listen(47898, '127.0.0.1');
+  log('test hook on 47898');
+}
 
 app.on('window-all-closed', e => e.preventDefault?.());
 app.on('before-quit', () => {

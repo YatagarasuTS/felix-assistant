@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Felix 1.3 — живой Феликс (9:16)</title>
+<!-- Вертикальный ролик «Феликс 1.3»: 1080×1920. Позы и эффекты — те же, что в программе (app/ui/fx3d.js). -->
+<style>
+  :root { --teal: #1FB5A3; --teal2: #5EF0D8; --text: #E8FBF8; --dim: #86AFAA; --font: 'Segoe UI Variable Text', 'Segoe UI', sans-serif; --display: 'Segoe UI Variable Display', 'Segoe UI', sans-serif; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; width: 1080px; height: 1920px; overflow: hidden; background: #000; color: var(--text); font: 26px/1.35 var(--font); -webkit-font-smoothing: antialiased; }
+  #root { position: absolute; left: 0; top: 0; width: 1080px; height: 1920px; overflow: hidden; }
+  .layer { position: absolute; inset: 0; }
+  #bg { background: radial-gradient(90% 55% at 50% 32%, #13474a 0%, #0a2427 50%, #040b0c 100%); }
+  #bg2 { background: radial-gradient(60% 35% at 85% 18%, rgba(255,143,179,.2), transparent 70%), radial-gradient(70% 40% at 10% 80%, rgba(31,181,163,.25), transparent 70%); }
+  #grid { background-image: linear-gradient(rgba(94,240,216,.05) 1px, transparent 1px), linear-gradient(90deg, rgba(94,240,216,.05) 1px, transparent 1px); background-size: 60px 60px; mask-image: radial-gradient(70% 60% at 50% 45%, #000, transparent); }
+  #floor { position: absolute; left: 0; right: 0; bottom: 0; height: 160px; background: radial-gradient(60% 100% at 50% 100%, rgba(94,240,216,.12), transparent 70%); }
+  canvas.full { position: absolute; left: 0; top: 0; width: 1080px; height: 1920px; }
+  #flash { position: absolute; inset: 0; background: #dffcf6; opacity: 0; pointer-events: none; }
+  #vignette { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(130% 100% at 50% 50%, transparent 62%, rgba(0,0,0,.5) 100%); }
+  .em { font-family: 'Segoe UI Emoji'; font-style: normal; }
+  #brand { position: absolute; left: 50%; top: 70px; transform: translateX(-50%); display: flex; gap: 14px; align-items: center; padding: 10px 22px 10px 12px; border-radius: 40px; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.14); font: 650 28px var(--display); letter-spacing: 2px; opacity: 0; white-space: nowrap; }
+  #brand .ic { width: 44px; height: 44px; border-radius: 13px; background: linear-gradient(180deg, #1FB5A3, #0c6e64); display: grid; place-items: center; }
+  #brand .ic svg { width: 32px; height: 32px; } #brand b { color: var(--teal2); font-weight: 650; }
+  .stitle { position: absolute; left: 0; right: 0; top: 150px; text-align: center; font: 800 64px/1.1 var(--display); text-shadow: 0 6px 30px rgba(0,0,0,.6); opacity: 0; white-space: nowrap; }
+  .stitle .em { margin-right: 14px; }
+  #caption { position: absolute; left: 50%; top: 262px; padding: 14px 30px 14px 16px; border-radius: 46px; background: rgba(4,12,14,.86); border: 1px solid rgba(255,255,255,.16); font-size: 40px; display: flex; gap: 18px; align-items: center; opacity: 0; white-space: nowrap; box-shadow: 0 14px 40px rgba(0,0,0,.4); z-index: 5; }
+  #caption .mic { width: 60px; height: 60px; border-radius: 50%; background: var(--teal); display: grid; place-items: center; flex: none; }
+  #caption .mic svg { width: 32px; height: 32px; fill: none; stroke: #04201D; stroke-width: 2.4; stroke-linecap: round; }
+  #caption .wave { display: flex; gap: 5px; align-items: center; height: 40px; } #caption .wave i { width: 6px; border-radius: 3px; background: var(--teal2); }
+  #intro { position: absolute; left: 0; right: 0; top: 170px; text-align: center; opacity: 0; }
+  #intro .name { font: 800 190px/0.95 var(--display); letter-spacing: 6px; background: linear-gradient(180deg, #ffffff 30%, #9ff5e8); -webkit-background-clip: text; color: transparent; }
+  #intro .ver { display: inline-block; margin-top: 18px; padding: 6px 30px; border-radius: 40px; background: var(--teal); color: #04201D; font: 800 54px var(--display); }
+  #intro .tag { font: 600 54px/1.2 var(--display); color: #e8fbf8; margin-top: 26px; } #intro .tag em { font-style: normal; color: #ffb3cf; }
+  .bubble { position: absolute; max-width: 560px; padding: 22px 30px 24px; border-radius: 30px; font-size: 38px; line-height: 1.28; background: linear-gradient(180deg, rgba(14,32,36,.97), rgba(7,17,19,.95)); border: 2.5px solid var(--teal); box-shadow: 0 16px 40px rgba(0,0,0,.5), 0 0 26px rgba(31,181,163,.3); opacity: 0; z-index: 6; }
+  .bubble::after { content: ''; position: absolute; left: var(--tail, 120px); bottom: -17px; width: 30px; height: 30px; margin-left: -15px; border-right: 2.5px solid var(--teal); border-bottom: 2.5px solid var(--teal); transform: rotate(45deg); background: #08171a; }
+  .bubble .caret { display: inline-block; width: 3px; height: 1em; margin-left: 3px; vertical-align: -5px; background: var(--teal2); }
+
+  /* окно «Телефон» на компьютере */
+  #pcwin { position: absolute; left: 44px; top: 360px; width: 610px; height: 1250px; border-radius: 26px; background: #0d1a1c; border: 1.5px solid rgba(94,240,216,.28); box-shadow: 0 40px 100px rgba(0,0,0,.6), 0 0 40px rgba(31,181,163,.15); opacity: 0; overflow: hidden; }
+  #pcwin .tb { height: 62px; display: flex; align-items: center; gap: 14px; padding: 0 20px; background: rgba(255,255,255,.04); border-bottom: 1px solid rgba(255,255,255,.07); font: 600 26px var(--display); }
+  #pcwin .tb .lg { width: 34px; height: 34px; border-radius: 10px; background: linear-gradient(180deg, #1FB5A3, #0c6e64); display: grid; place-items: center; }
+  #pcwin .tb .lg svg { width: 24px; height: 24px; fill: none; stroke: #fff; stroke-width: 2; }
+  #pcwin .tb .x { margin-left: auto; color: var(--dim); font-size: 28px; letter-spacing: 18px; }
+  #frame { position: absolute; left: 50%; top: 92px; width: 474px; height: 1000px; transform: translateX(-50%); border-radius: 46px; padding: 12px; background: linear-gradient(160deg, #2b3438, #101619); box-shadow: 0 0 0 2px var(--teal), 0 20px 50px rgba(0,0,0,.5); }
+  #scr { width: 450px; height: 976px; border-radius: 36px; display: block; background: #050a0b; }
+  #live { position: absolute; right: 112px; top: 13px; padding: 6px 18px; border-radius: 30px; background: rgba(0,0,0,.6); color: #dff; font: 600 22px var(--display); display: flex; gap: 10px; align-items: center; white-space: nowrap; }
+  #live i { width: 12px; height: 12px; border-radius: 50%; background: #ef4444; }
+  #tools { position: absolute; left: 0; right: 0; top: 1118px; display: flex; gap: 10px; justify-content: center; }
+  #tools span { width: 62px; height: 54px; border-radius: 14px; background: rgba(255,255,255,.07); display: grid; place-items: center; }
+  #tools svg { width: 28px; height: 28px; fill: none; stroke: #9cc; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  #touchdot { position: absolute; width: 64px; height: 64px; margin: -32px 0 0 -32px; border-radius: 50%; background: rgba(255,255,255,.35); border: 3px solid rgba(255,255,255,.8); opacity: 0; pointer-events: none; }
+  /* сравнение: было — стало */
+  #cmp { position: absolute; left: 684px; top: 420px; width: 360px; display: flex; flex-direction: column; gap: 16px; }
+  .cmp { padding: 18px 22px; border-radius: 24px; background: rgba(4,12,14,.85); border: 1.5px solid rgba(255,255,255,.12); opacity: 0; }
+  .cmp .k { color: var(--dim); font: 600 24px var(--display); } .cmp .v { font: 800 54px/1.1 var(--display); margin-top: 4px; } .cmp .s { color: var(--dim); font-size: 23px; margin-top: 2px; }
+  .cmp.old .v { color: #8aa; text-decoration: line-through; text-decoration-color: #ef4444; text-decoration-thickness: 5px; }
+  .cmp.new { border-color: var(--teal2); background: linear-gradient(180deg, rgba(31,181,163,.3), rgba(6,30,30,.9)); box-shadow: 0 0 30px rgba(31,181,163,.3); } .cmp.new .v { color: #fff; }
+  .cmp.finger .v { font-size: 40px; }
+  /* монетка и кубик: результат */
+  #result { position: absolute; left: 50%; top: 380px; transform: translateX(-50%); padding: 14px 34px; border-radius: 30px; background: rgba(4,12,14,.85); border: 2px solid #ffd84a; font: 800 52px var(--display); color: #ffe27a; opacity: 0; white-space: nowrap; }
+  /* финал */
+  #endtxt { position: absolute; left: 0; right: 0; top: 140px; text-align: center; opacity: 0; display: flex; flex-direction: column; align-items: center; }
+  #endtxt .logo { display: flex; gap: 22px; align-items: center; }
+  #endtxt .logo .ic { width: 110px; height: 110px; border-radius: 30px; background: linear-gradient(180deg, #1FB5A3, #0c6e64); display: grid; place-items: center; box-shadow: 0 12px 40px rgba(31,181,163,.35); } #endtxt .logo .ic svg { width: 78px; height: 78px; }
+  #endtxt .name { font: 800 120px/1 var(--display); letter-spacing: 4px; } #endtxt .name b { color: var(--teal2); }
+  #endtxt .tag { font: 500 38px/1.35 var(--display); color: #bfeee8; margin: 22px 60px 26px; }
+  #endtxt .feat { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 900px; }
+  #endtxt .feat div { padding: 16px 18px; border-radius: 20px; background: rgba(4,12,14,.8); border: 1px solid rgba(255,255,255,.12); font: 600 28px var(--display); display: flex; gap: 12px; align-items: center; text-align: left; }
+  #endtxt .feat .em { font-size: 36px; }
+  #endtxt .cta { display: flex; gap: 18px; align-items: center; margin-top: 30px; padding: 22px 42px 22px 32px; border-radius: 26px; background: var(--teal); color: #04201D; font: 700 44px var(--display); box-shadow: 0 14px 40px rgba(31,181,163,.45); }
+  #endtxt .cta svg { width: 48px; height: 48px; fill: none; stroke: #04201D; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+  #endtxt .url { margin-top: 20px; font: 600 36px var(--display); color: var(--teal2); }
+  #endtxt .small { color: var(--dim); font-size: 28px; margin-top: 12px; }
+  .cur { position: absolute; left: 0; top: 0; opacity: 0; z-index: 20; filter: drop-shadow(0 4px 8px rgba(0,0,0,.5)); }
+  #cursor { width: 56px; height: 56px; }
+  #hand { font: 76px/1 'Segoe UI Emoji'; margin: -40px 0 0 -38px; }
+</style>
+</head>
+<body>
+<div id="root">
+  <div class="layer" id="bg"></div><div class="layer" id="bg2"></div><div class="layer" id="grid"></div><div id="floor"></div>
+  <div id="pcwin">
+    <div class="tb"><span class="lg"><svg viewBox="0 0 24 24"><rect x="7" y="3" width="10" height="18" rx="2.5"/><path d="M11 18h2"/></svg></span>Телефон<span class="x">–✕</span></div>
+    <div id="frame"><canvas id="scr" width="450" height="976"></canvas></div>
+    <div id="live"><i></i><span id="livetxt">экран телефона · 60 к/с</span></div>
+    <div id="touchdot"></div>
+    <div id="tools"></div>
+  </div>
+  <div id="cmp">
+    <div class="cmp old"><div class="k">Было</div><div class="v">3 к/с</div><div class="s">снимки экрана, рывками</div></div>
+    <div class="cmp new"><div class="k">Теперь</div><div class="v">60 к/с</div><div class="s">видео H.264 с телефона</div></div>
+    <div class="cmp finger"><div class="k">Мышь</div><div class="v"><span class="em">👆</span> как палец</div><div class="s">ведёшь — палец двигается вживую</div></div>
+  </div>
+  <canvas id="gl" class="full"></canvas>
+  <div id="brand"><span class="ic"><svg viewBox="0 0 24 24" id="brandclover"></svg></span>ФЕЛИКС <b>1.3</b></div>
+  <div class="stitle" id="t_phone"><span class="em">📱</span>Телефон — 60 к/с</div>
+  <div class="stitle" id="t_pet"><span class="em">🖐️</span>Погладь мышкой</div>
+  <div class="stitle" id="t_drag"><span class="em">✊</span>Возьми и перенеси</div>
+  <div class="stitle" id="t_toss"><span class="em">🎲</span>Монетка и кубик</div>
+  <div class="stitle" id="t_weather"><span class="em">🌧️</span>Погода у головы</div>
+  <div class="stitle" id="t_dance"><span class="em">🎵</span>Танцует под музыку</div>
+  <div id="intro"><div class="name">ФЕЛИКС</div><div class="ver">1.3</div><div class="tag">теперь <em>живой</em> —<br>и телефон без тормозов</div></div>
+  <div id="result"></div>
+  <canvas id="fx" class="full"></canvas>
+  <div id="endtxt"><div class="logo"><div class="ic"><svg viewBox="0 0 24 24" id="endclover"></svg></div><div class="name">ФЕЛИКС <b>1.3</b></div></div>
+    <div class="tag">Голосовой 3D-помощник для Windows</div>
+    <div class="feat"><div><span class="em">📱</span>Экран телефона 60 к/с</div><div><span class="em">👆</span>Мышь — как палец</div><div><span class="em">🖐️</span>Можно погладить</div><div><span class="em">✊</span>Можно перенести</div><div><span class="em">🎲</span>Монетка и кубик</div><div><span class="em">🎵</span>Танцует под музыку</div></div>
+    <div class="cta"><svg viewBox="0 0 24 24"><path d="M12 3.5v11.5M7 10.5l5 5 5-5M4.5 19.5h15"/></svg>Скачать бесплатно</div>
+    <div class="url">github.com/YatagarasuTS/felix-assistant</div>
+    <div class="small">Windows 10 и 11 · Android 9+ · открытый код (MIT)</div></div>
+  <div class="bubble" id="bubble"></div>
+  <div id="caption"><span class="mic"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg></span><span id="ctext"></span><span class="wave" id="cwave"></span></div>
+  <svg id="cursor" class="cur" viewBox="0 0 24 24"><path d="M5 3l14 8.5-6.2 1.3 3.6 7-2.6 1.3-3.6-7L5 18z" fill="#fff" stroke="#111" stroke-width="1.3" stroke-linejoin="round"/></svg>
+  <div id="hand" class="cur"></div>
+  <div id="vignette"></div>
+  <div id="flash"></div>
+</div>
+<script type="importmap">{ "imports": { "three": "felix://app/ui/vendor/three.module.js" } }</script>
+<script type="module" src="live.js"></script>
+</body>
+</html>

@@ -5,6 +5,7 @@ import { VRMLoaderPlugin, VRMUtils } from './vendor/three-vrm.module.js';
 import { Y, init, sound, svg } from './common.js';
 import { makePhone, holdPhone, phonePose } from './felix3d.js';
 import * as WR from './wardrobe3d.js';
+import * as FX3 from './fx3d.js';
 
 const $ = s => document.querySelector(s);
 const Q = new URLSearchParams(location.search);
@@ -230,6 +231,11 @@ function pose(t, dt) {
       target.head.x += 0.08 * k; exprTarget.relaxed = k * 0.5;
       if (stateT > 2.4) setState('idle'); break;
     }
+    case 'dizzy': {                                        // после сильного падения кружится голова
+      const r = FX3.dizzyPose(target, stateT);
+      exprTarget.surprised = r.surprised; exprTarget.relaxed = r.relaxed;
+      if (stateT > 2.6) setState('idle'); break;
+    }
   }
   if (state === 'idle' && mode === 'home' && !wact) {
     nextGesture -= dt;
@@ -442,9 +448,11 @@ function drawParts(dt) {
     const p = parts[i];
     p.life -= dt * (p.kind === 'leaf' ? 0.6 : 1.2);
     if (p.life <= 0 || p.y > H + 10) { parts.splice(i, 1); continue; }
-    p.vy += (p.kind === 'leaf' ? 40 : 160) * dt; p.vx *= 0.98; p.x += p.vx * dt; p.y += p.vy * dt; p.rot += p.vr * dt;
+    if (p.float) p.life -= dt * 0.3;                       // сердечки от поглаживания всплывают вверх
+    p.vy += (p.kind === 'leaf' ? 40 : p.float ? 30 : 160) * dt; p.vx *= 0.98; p.x += p.vx * dt; p.y += p.vy * dt; p.rot += p.vr * dt;
     fxc.save(); fxc.globalAlpha = Math.min(1, p.life * 1.5); fxc.translate(p.x, p.y); fxc.rotate(p.rot);
     if (p.kind === 'leaf') drawLeaf(p.size, Math.random() < 0.3 ? '#26303F' : ac1);
+    else if (p.kind === 'note') { fxc.fillStyle = ac; fxc.shadowColor = ac1; fxc.shadowBlur = 6; fxc.font = `700 ${p.size}px "Segoe UI Symbol", "Segoe UI"`; fxc.textAlign = 'center'; fxc.fillText(p.ch, 0, 0); }
     else if (p.kind === 'heart') { const s = p.size * 2.2; fxc.fillStyle = '#ff6b9a'; fxc.beginPath(); fxc.moveTo(0, s * 0.3); fxc.bezierCurveTo(-s, -s * 0.4, -s * 0.4, -s * 1.1, 0, -s * 0.45); fxc.bezierCurveTo(s * 0.4, -s * 1.1, s, -s * 0.4, 0, s * 0.3); fxc.fill(); }
     else { fxc.fillStyle = ac; fxc.shadowColor = ac; fxc.shadowBlur = 8; fxc.beginPath(); fxc.arc(0, 0, p.size, 0, Math.PI * 2); fxc.fill(); }
     fxc.restore();
@@ -536,14 +544,171 @@ function overUI(x, y) {
   return el && el !== canvas && el !== fx && el !== document.body && el !== document.documentElement;
 }
 function updateHit() {
-  if (mode !== 'home') return;
+  if (mode !== 'home' || drag || downAt) return;            // держат мышью — окно кликов не пропускает
   const gl = renderer.getContext();
   const dpr = renderer.getPixelRatio();
   gl.readPixels(Math.floor(mouse.x * dpr), Math.floor((H - mouse.y) * dpr), 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pickBuf);
   const hit = (pickBuf[3] > 20 && turn.visible) || overUI(mouse.x, mouse.y);
   if (hit === ignoring) { ignoring = !hit; Y.invoke('mouse:ignore', ignoring); }
 }
-canvas.addEventListener('click', () => { if (!ignoring && !minimized) { sound('pop', 0.3); Y.invoke('felix:clicked'); setState('listen'); } });
+canvas.addEventListener('click', () => { if (justDragged) return; if (!ignoring && !minimized) { sound('pop', 0.3); Y.invoke('felix:clicked'); setState('listen'); } });
+
+// ---------------------------------------------------------------- схватить мышью и перенести
+// Нажал на Феликса и повёл — он висит под курсором (окно едет следом), болтает ногами и раскачивается от скорости.
+// Отпустил — падает на «пол», отскакивает и приземляется; при сильном падении кружится голова.
+let drag = null, fall = null, land = null, downAt = null, justDragged = false;
+const SW = { a: 0, v: 0 };                                // раскачивание вокруг точки, за которую держат
+canvas.addEventListener('pointerdown', e => {
+  if (e.button !== 0 || ignoring || minimized || mode !== 'home' || wact || fall) return;
+  downAt = { sx: e.screenX, sy: e.screenY, x: e.clientX, y: e.clientY, id: e.pointerId };
+  try { canvas.setPointerCapture(e.pointerId); } catch { }
+});
+canvas.addEventListener('pointermove', e => {
+  if (!downAt || drag) return;
+  if (Math.hypot(e.screenX - downAt.sx, e.screenY - downAt.sy) > 7) startDrag();
+});
+async function startDrag() {
+  const g = screenToWorld(downAt.x, downAt.y);
+  drag = { gx: g.x - root.position.x, gy: g.y - root.position.y, vx: 0, vy: 0, t0: performance.now() };
+  PET.on = false; resetPet(); hideBubble();
+  exprTarget.surprised = 1; sound('pop', 0.3);
+  if (!(await Y.invoke('felix:drag', 'start'))) { drag = null; }
+}
+function stopDrag() {
+  const was = !!drag;
+  downAt = null;
+  if (!was) return;
+  drag = null; justDragged = true; setTimeout(() => { justDragged = false; }, 80);
+  fall = { t: 0 };
+  Y.invoke('felix:drag', 'end');
+}
+canvas.addEventListener('pointerup', stopDrag);
+canvas.addEventListener('lostpointercapture', stopDrag);
+addEventListener('blur', () => { if (drag) stopDrag(); });
+Y.on('drop', d => {
+  if (d.phase === 'drag' && drag) { drag.vx = d.vx; drag.vy = d.vy; }
+  else if (d.phase === 'fall') { fall = { t: 0 }; }
+  else if (d.phase === 'bounce') { sound('pop', 0.25); land = { t: 0, k: Math.min(1, d.speed / 2200) }; burst(8, 'leaf', foot.x, foot.y - 6); }
+  else if (d.phase === 'land') {
+    fall = null; land = { t: 0, k: Math.min(1, d.speed / 2200) };
+    sound('pop', 0.35); burst(16, 'leaf', foot.x, foot.y - 6);
+    setTimeout(() => {
+      if (drag) return;
+      if (d.high > 420) { setState('dizzy'); const m = mark('✦', 'stars'); setTimeout(() => m.remove(), 2600); }
+      else setState('happy');
+    }, 280);
+  }
+});
+/** Раскачивание: пружина к углу от горизонтальной скорости; поворот вокруг точки захвата */
+function dragTick(dt) {
+  const want = drag ? THREE.MathUtils.clamp(-drag.vx * 0.00045, -0.75, 0.75) : 0;
+  SW.v += ((want - SW.a) * 55 - SW.v * (drag ? 5 : 9)) * dt; SW.a += SW.v * dt;
+  if (!drag && Math.abs(SW.a) < 0.002 && Math.abs(SW.v) < 0.01) { SW.a = SW.v = 0; }
+  if (wact && wact.kind === 'outfit') return;                // за ширмой turn двигает гардероб
+  FX3.swingAbout(turn, SW.a, drag ? drag.gx : 0, drag ? drag.gy : modelH * 0.9);
+  if (land) { land.t += dt; if (land.t > 0.5) land = null; }
+  if (fall) fall.t += dt;
+}
+/** Поправки позы из fx3d.js: приседание и выражение лица */
+function applyFx(r) {
+  if (!r) return;
+  if (r.hy !== undefined) hipsYTarget += r.hy;
+  for (const e of ['happy', 'relaxed', 'surprised']) if (r[e]) exprTarget[e] = Math.max(exprTarget[e], r[e]);
+  if (r.mouth) mouth = Math.max(mouth, r.mouth);
+}
+function dragPose(t) {
+  if (drag) { hipsYTarget = 0; applyFx(FX3.dragPose(target, Math.min(1, (performance.now() - drag.t0) / 250), t, drag.vx)); }
+  else if (fall) applyFx(FX3.fallPose(target));
+  else if (land) { hipsYTarget = 0; applyFx(FX3.landPose(target, land.t / 0.5, land.k)); }
+}
+// ---------------------------------------------------------------- эффекты: погода у головы, монетка, кубик, танец (fx3d.js)
+const FX = { weather: null, toss: null, dance: { on: false, k: 0, noteAt: 0 } };
+Y.on('fx', f => {
+  if (!vrm || minimized) return;
+  if (f.kind === 'weather') FX.weather = { ...f, t: 0, life: 9 };
+  else if (f.kind === 'coin' || f.kind === 'dice') startToss(f);
+  else if (f.kind === 'dance') FX.dance.on = !!f.on;
+});
+
+// ---- погода: сбоку от головы (над головой — облачко с речью)
+function weatherAt() {
+  const h = headScreen(), dir = side === 'left' ? 1 : -1, s = Math.min(46, 0.15 * pxPerM);
+  return { x: Math.max(s * 1.3, Math.min(W - s * 1.3, h.x + dir * 0.58 * pxPerM)), y: Math.max(s * 1.2, h.y - 0.1 * pxPerM), s };
+}
+function drawWeather(dt) {
+  const w = FX.weather;
+  if (!w || minimized) return;
+  w.t += dt;
+  if (w.t > w.life) { FX.weather = null; return; }
+  FX3.drawWeather(fxc, { ...weatherAt(), sky: w.sky, floor: foot.y - 2, t: w.t, a: Math.min(1, w.t / 0.4, (w.life - w.t) / 0.8), temp: w.temp });
+}
+/** Поза под погоду и взгляд на картинку */
+function weatherPose(t) {
+  const w = FX.weather;
+  if (!w || drag || fall || walk || wact || !['idle', 'talk', 'listen'].includes(state)) return;
+  const k = Math.min(1, w.t / 0.5, Math.max(0, (w.life - 1.2 - w.t) / 0.6));
+  if (k <= 0) return;
+  const p = weatherAt(), wp = screenToWorld(p.x, p.y);
+  lookTarget.position.set(wp.x, wp.y, 3);
+  target.head.y += ((side === 'left' ? 0.35 : -0.35) - target.head.y) * k * 0.6;
+  applyFx(FX3.weatherPose(target, w.sky, k, t, WR));
+}
+
+// ---- монетка и кубик: настоящие 3D-предметы; результат решён заранее — главный процесс объявит его, когда упадёт
+function startToss(f) {
+  if (FX.toss) { scene.remove(FX.toss.obj); FX.toss = null; }
+  const dir = side === 'left' ? 1 : -1, obj = f.kind === 'coin' ? FX3.makeCoin() : FX3.makeDice();
+  scene.add(obj);
+  const chest = new THREE.Vector3(); B.chest.getWorldPosition(chest);
+  FX.toss = { ...f, obj, t: 0, dir, hits: 0, p0: chest.clone().add(new THREE.Vector3(dir * 0.16, -0.12, 0.3)), axis: new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize() };
+  sound('pop', 0.3);
+}
+function tossTick(dt) {
+  const T = FX.toss;
+  if (!T) return;
+  T.t = T.freeze != null ? T.freeze : T.t + dt;            // freeze — застывший момент для проверочного снимка
+  const o = T.obj;
+  if (T.kind === 'coin') {
+    const r = FX3.coinStep(o, T.p0, T.dir, T.result === 'heads', T.t);
+    if (T.t > FX3.COIN_T.up && !T.whoosh) { T.whoosh = true; sound('pop', 0.25); }
+    if (r.caught && !T.caught) { T.caught = true; sound('pop', 0.35); const p = worldToScreen(o.position); burst(10, 'spark', p.x, p.y); }
+    if (r.done) { scene.remove(o); FX.toss = null; }
+  } else {
+    const land = new THREE.Vector3(root.position.x + T.dir * 0.28, root.position.y + 0.06, 0.4);
+    const r = FX3.diceStep(o, T.p0, land, T.dir, T.result, T.axis, T.t);
+    if (r.hits > T.hits && r.hits <= 2) sound('pop', 0.2);
+    T.hits = r.hits;
+    if (r.shown && !T.shown) { T.shown = true; const p = worldToScreen(o.position); burst(12, 'spark', p.x, p.y); }
+    if (r.done) { scene.remove(o); FX.toss = null; }
+  }
+}
+/** Бросок: рука ближе к центру экрана вперёд-вверх, взгляд за предметом */
+function tossPose() {
+  const T = FX.toss;
+  if (!T || drag || fall) return;
+  const p = T.obj.position;
+  lookTarget.position.set(p.x, p.y, 3);
+  const flick = T.t < 0.3 ? T.t / 0.3 : T.kind === 'coin' && T.t < 1.3 ? 1 - (T.t - 0.3) * 0.3 : Math.max(0, 1 - (T.t - 0.3) * 1.5);
+  FX3.tossPose(target, T.dir, Math.max(0, Math.min(1, flick + (T.kind === 'coin' && T.t > 1.2 && T.t < 3.3 ? 0.8 : 0))));
+  target.head.x += (p.y > root.position.y + modelH ? -0.25 : 0.1) * 0.6;
+  if (T.t > 0.3 && T.t < 1.3) exprTarget.surprised = Math.max(exprTarget.surprised, 0.4);
+}
+
+// ---- танец под музыку: нотки над головой
+function dancePose(t, dt) {
+  const D = FX.dance, can = D.on && mode === 'home' && !minimized && !drag && !fall && !wact && !walk && !PET.on && !FX.toss && ['idle', 'talk'].includes(state);
+  D.k += ((can ? 1 : 0) - D.k) * (1 - Math.exp(-dt * 3));
+  if (D.k < 0.01) return;
+  applyFx(FX3.dancePose(target, D.k, t, state === 'talk'));
+  if (t - D.noteAt > 1.1 && D.k > 0.5) {
+    D.noteAt = t; const h = headScreen();
+    parts.push({ x: h.x + (Math.random() - 0.5) * 70, y: h.y - 30, vx: (Math.random() - 0.5) * 30, vy: -60, life: 1, kind: 'note', rot: (Math.random() - 0.5) * 0.5, vr: (Math.random() - 0.5) * 0.8, size: 16 + Math.random() * 6, float: true, ch: Math.random() < 0.5 ? '♪' : '♫' });
+  }
+}
+
+let renders = 0;
+window.__fxState = () => ({ weather: FX.weather && FX.weather.sky, toss: FX.toss && FX.toss.kind, tossT: FX.toss && +FX.toss.t.toFixed(2), dance: +FX.dance.k.toFixed(2) });
+window.__dragState =() => ({ drag: !!drag, fall: !!fall, land: !!land, swing: +SW.a.toFixed(3), state, renders, arm: +cur.leftUpperArm.z.toFixed(2), vis: document.visibilityState });
 addEventListener('contextmenu', e => { e.preventDefault(); if (!ignoring) Y.invoke('popup', e.clientX, e.clientY); });
 addEventListener('mouseleave', () => { mouse.x = -1; if (!ignoring) { ignoring = true; Y.invoke('mouse:ignore', true); } });
 Y.on('mouse:sync', v => { ignoring = v; });
@@ -647,26 +812,59 @@ function wardrobeTick(dt, t) {
   }
 }
 
-// погладить по голове: мышь ходит туда-сюда над головой
-const patTrail = [];
-let patAt = 0;
-function patCheck(x, y) {
-  if (!vrm || minimized || mode !== 'home' || wact) return;
-  const hp = new THREE.Vector3(); B.head.getWorldPosition(hp); hp.y += 0.1;
-  const h = worldToScreen(hp), r = 0.16 * pxPerM;
-  if (Math.abs(x - h.x) > r || Math.abs(y - h.y) > r * 0.8) { patTrail.length = 0; return; }
-  const now = performance.now();
-  patTrail.push({ x, t: now });
-  while (patTrail.length && now - patTrail[0].t > 1600) patTrail.shift();
-  let turns = 0;
-  for (let i = 2; i < patTrail.length; i++) { const a = patTrail[i - 1].x - patTrail[i - 2].x, b = patTrail[i].x - patTrail[i - 1].x; if (a * b < 0 && Math.abs(b) > 2) turns++; }
-  if (turns >= 4 && now - patAt > 4000) {
-    patAt = now; patTrail.length = 0;
-    setState('shy'); exprTarget.happy = 1;
-    burst(10, 'heart', h.x, h.y - 10);
-    Y.invoke('felix:petted');
-  }
+// ---------------------------------------------------------------- погладить по голове
+// Мышь водит туда-сюда над головой (по горизонтали или вертикали). Разворот засчитывается, только когда курсор
+// ушёл от крайней точки на заметное расстояние (гистерезис) — дрожание руки и редкие события мыши не мешают.
+// Два разворота за 1,5 с — Феликс жмурится, тянется головой к руке, летят сердечки; гладят дольше ~1,5 с — отвечает.
+const PET = { on: false, since: 0, lastIn: 0, lastTurn: 0, heartAt: 0, toldAt: -1e9, x: 0, y: 0, turns: [], ax: { x: null, y: null } };
+function headScreen() { const hp = new THREE.Vector3(); B.head.getWorldPosition(hp); hp.y += 0.08 * visibleScale; return worldToScreen(hp); }
+function overHead(x, y) {
+  if (!vrm || minimized || mode !== 'home' || x < 0) return false;
+  const h = headScreen(), rx = 0.32 * pxPerM * visibleScale, ry = 0.27 * pxPerM * visibleScale;
+  return ((x - h.x) / rx) ** 2 + ((y - h.y) / ry) ** 2 <= 1;
 }
+function petAxis(k, v, hyst, now) {
+  let a = PET.ax[k];
+  if (!a) { PET.ax[k] = { ext: v, dir: 0 }; return; }
+  const d = v - a.ext;
+  if (!a.dir) { if (Math.abs(d) > hyst) { a.dir = Math.sign(d); a.ext = v; } return; }
+  if (d * a.dir > 0) { a.ext = v; return; }                 // ведёт дальше в ту же сторону
+  if (Math.abs(d) > hyst) { a.dir = -a.dir; a.ext = v; PET.turns.push(now); PET.lastTurn = now; }   // развернулась
+}
+function resetPet() { PET.ax.x = PET.ax.y = null; PET.turns.length = 0; }
+function patCheck(x, y) {
+  const inside = overHead(x, y) && !wact && !drag;
+  canvas.style.cursor = drag ? 'grabbing' : inside ? 'grab' : '';
+  const now = performance.now();
+  if (!inside) { if (now - PET.lastIn > 350) resetPet(); return; }
+  PET.lastIn = now; PET.x = x; PET.y = y;
+  const hyst = Math.max(7, 0.035 * pxPerM);
+  petAxis('x', x, hyst, now); petAxis('y', y, hyst, now);
+  while (PET.turns.length && now - PET.turns[0] > 1500) PET.turns.shift();
+  if (!PET.on && PET.turns.length >= 2) { PET.on = true; PET.since = now; sound('pop', 0.15); }
+}
+function heart(x, y) {
+  parts.push({ x: x + (Math.random() - 0.5) * 30, y: y - 10, vx: (Math.random() - 0.5) * 60, vy: -120 - Math.random() * 80, life: 1, kind: 'heart', rot: (Math.random() - 0.5) * 0.6, vr: (Math.random() - 0.5) * 1.5, size: 3 + Math.random() * 2.5, float: true });
+}
+/** Каждый кадр: держит или заканчивает «гладят», сердечки, ответ */
+function petTick(now) {
+  if (!PET.on) return;
+  if (now - PET.lastTurn > 900 || now - PET.lastIn > 400 || minimized || mode !== 'home' || drag) {
+    PET.on = false; resetPet();
+    if (now - PET.since > 1200 && !playing) setState('happy');
+    return;
+  }
+  if (now - PET.heartAt > 420) { PET.heartAt = now; heart(PET.x, PET.y); }
+  if (now - PET.since > 1500 && now - PET.toldAt > 20000) { PET.toldAt = now; burst(8, 'heart', PET.x, PET.y); Y.invoke('felix:petted'); }
+}
+/** Поза поверх обычной: жмурится, голова тянется к руке и покачивается за ней */
+function petPose(t) {
+  if (!PET.on || walk || ['phone', 'sleep', 'sit', 'walk', 'run'].includes(state)) return;
+  const h = headScreen(), sd = THREE.MathUtils.clamp((PET.x - h.x) / (0.3 * pxPerM), -1, 1);
+  applyFx(FX3.petPose(target, 1, sd, t));
+  lookTarget.position.y = root.position.y + modelH * 1.3;
+}
+window.__petState = () => ({ on: PET.on, turns: PET.turns.length, told: PET.toldAt > 0, head: vrm ? headScreen() : null, cursor: canvas.style.cursor, pxPerM, ignoring, dpr: devicePixelRatio, foot });
 
 // селфи: Феликс позирует, картинка с подписью уходит в главный процесс (сохраняется в «Изображения»)
 Y.on('selfie', async () => {
@@ -699,10 +897,11 @@ function loop() {
   const dt = Math.min(0.05, clock.getDelta());
   const t = clock.elapsedTime;
   drawParts(dt);
+  if (vrm) drawWeather(dt);
   if (!vrm) return;
   if (minimized && !parts.length && visibleScale < 0.02) return;
   frameAcc += dt;
-  const fps = (mode === 'home' && state === 'idle' && !playing && !walk && !wact) ? 30 : 60;
+  const fps = (mode === 'home' && state === 'idle' && !playing && !walk && !wact && !PET.on && !drag && !fall && !land && !FX.toss && !FX.weather && FX.dance.k < 0.01) ? 30 : 60;
   if (frameAcc < 1 / fps - 0.002) return;
   const fdt = frameAcc; frameAcc = 0;
   if (walk) {
@@ -716,6 +915,8 @@ function loop() {
     }
   }
   wardrobeTick(fdt, t);
+  petTick(performance.now());
+  dragTick(fdt);
   facing += (facingTarget - facing) * (1 - Math.exp(-fdt * 8));
   if (!walk && !wact && state === 'idle' && mode === 'home') facingTarget = side === 'left' ? 0.18 : -0.18;   // чуть развёрнут к центру экрана
   spin += spinV * fdt; spinV *= Math.exp(-fdt * 3); if (spinV < 0.3) { spin += (Math.round(spin / (Math.PI * 2)) * Math.PI * 2 - spin) * (1 - Math.exp(-fdt * 6)); }
@@ -723,12 +924,18 @@ function loop() {
   visibleScale += (scaleTarget - visibleScale) * (1 - Math.exp(-fdt * 7));
   turn.scale.setScalar(Math.max(0.0001, visibleScale));
   updateMouth();
+  tossTick(fdt);
   pose(t, fdt);
+  dancePose(t, fdt);
+  weatherPose(t);
+  tossPose(t);
+  petPose(t);
+  dragPose(t);
   applyPose(fdt);
   WR.updateAccessories(vrm, t);
   if (vrm.userData.phone) vrm.userData.phone.visible = state === 'phone';
   vrm.update(fdt);
-  renderer.render(scene, camera);
+  renderer.render(scene, camera); renders++;
   if (wantPick) { updateHit(); wantPick = false; }
   if (mode === 'home' && $('#bubble').classList.contains('show')) layoutUI();
 }
@@ -744,6 +951,18 @@ try {
   // проверочные снимки: ?wear=crown,glasses&outfit=cosmos&dress=head
   const qw = Q.get('wear'), qo = Q.get('outfit');
   dressInstant(qw || qo ? { outfit: qo || 'mint', wear: Object.fromEntries((qw || '').split(',').filter(Boolean).map(id => [WR.slotOf(id), id])) } : (cfg.wardrobe || { wear: { ears: 'headphones' } }));
+  // проверочные снимки и кадры ролика: ?wx=rain&temp=5 (погода), ?toss=coin|dice&res=…&tt=1.1 (момент броска), ?dance=1
+  if (Q.get('wx')) FX.weather = { sky: Q.get('wx'), temp: Q.get('temp') === null ? 7 : Number(Q.get('temp')), t: Number(Q.get('wt') || 0.6), life: 1e9, drops: [], flashAt: 0.5 };
+  if (Q.get('toss')) setTimeout(() => { startToss({ kind: Q.get('toss'), result: Q.get('toss') === 'coin' ? (Q.get('res') || 'heads') : Number(Q.get('res') || 6) }); if (Q.get('tt')) { FX.toss.freeze = Number(Q.get('tt')); } }, 50);
+  if (Q.get('dance')) FX.dance.on = true;
+  // ?pet=1 — гладят (курсор-ладонь ходит над головой), ?hold=1 — держат мышью и качают
+  const hand = (x, y, ch) => { fxc.save(); fxc.font = '34px "Segoe UI Emoji"'; fxc.textAlign = 'center'; fxc.shadowColor = 'rgba(0,0,0,.4)'; fxc.shadowBlur = 6; fxc.fillText(ch, x, y); fxc.restore(); };
+  if (Q.get('pet')) setInterval(() => {
+    const now = performance.now(), h = headScreen();
+    Object.assign(PET, { on: true, since: now - 600, lastTurn: now, lastIn: now, toldAt: now, x: h.x + Math.sin(now / 160) * 0.12 * pxPerM, y: h.y - 0.08 * pxPerM });
+  }, 16);
+  if (Q.get('hold')) { drag = { gx: 0.02, gy: modelH * 0.78, vx: 0, t0: performance.now() - 1000 }; const amp = Number(Q.get('hold')) > 1 ? Number(Q.get('hold')) : 1400; setInterval(() => { drag.vx = Math.sin(performance.now() / 420) * amp; }, 16); }
+  if (Q.get('pet') || Q.get('hold')) { const draw0 = drawWeather; drawWeather = dt => { draw0(dt); if (PET.on) hand(PET.x + 8, PET.y + 8, '🖐️'); if (drag) { const g = worldToScreen(new THREE.Vector3(root.position.x + drag.gx, root.position.y + drag.gy, 0)); hand(g.x + 6, g.y + 4, '✊'); } }; }
   if (cfg.assistant.minimized) { minimized = true; turn.visible = false; visibleScale = 0; scaleTarget = 0; showOrb(); }
   else if (PORTRAIT) { visibleScale = 1; scaleTarget = 1; setState(Q.get('pose') || 'wave'); exprTarget.happy = 1; }
   else { visibleScale = 0.01; turn.scale.setScalar(0.01); scaleTarget = 1; spinV = 14; burst(60, 'leaf'); sound('appear', 0.45); setTimeout(() => setState('wave'), 700); }

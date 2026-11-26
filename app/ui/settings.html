@@ -91,18 +91,19 @@
 
     <section id="s-felix">
       <h1>Феликс</h1>
-      <p class="lead">Где он стоит и как себя ведёт. Феликса можно перетащить голосом: «Феликс, перейди влево».</p>
+      <p class="lead">Где он стоит и как себя ведёт. Феликса можно взять мышкой и перенести в любое место внизу экрана — он запомнит. Или голосом: «Феликс, перейди влево».</p>
       <div class="row"><div class="grow">Показывать Феликса на рабочем столе</div><span class="switch" data-k="assistant.enabled"></span></div>
       <div class="row"><div class="grow">Сторона экрана</div><div class="seg" id="side"><button data-v="left">Слева</button><button data-v="right">Справа</button></div></div>
       <div class="row"><div class="grow">Размер<div class="sub" id="scaleV"></div></div><input type="range" id="scale" min="0.7" max="1.3" step="0.05"></div>
       <div class="row"><div class="grow">Высота над краем экрана<div class="sub" id="liftV"></div></div><input type="range" id="lift" min="0" max="300" step="4"></div>
       <div class="row"><div class="grow">Субтитры в облачке</div><span class="switch" data-k="assistant.subtitles"></span></div>
+      <div class="row"><div class="grow">Пританцовывать под музыку<div class="sub">Когда на компьютере играет музыка (Яндекс Музыка, YouTube, Spotify и другие плееры Windows), Феликс танцует, а над ним летают нотки.</div></div><span class="switch" data-k="assistant.dance"></span></div>
       <div class="row"><div class="grow">Гулять по рабочему столу, пока тебя нет<div class="sub">Через 10 минут без мыши и клавиатуры Феликс заглядывает в папки на рабочем столе и засыпает.</div></div><span class="switch" data-k="assistant.idle"></span></div>
       <div class="row"><div class="grow">Клавиши Win + Y — позвать Феликса</div><span class="switch" data-k="assistant.winY"></span></div>
       <h2>Забота</h2>
       <div class="row"><div class="grow">Напоминать попить воды<div class="sub">Раз в час, только когда ты за компьютером. Голосом: «напоминай пить воду».</div></div><span class="switch" data-k="remind.water"></span></div>
       <div class="row"><div class="grow">Звать размяться<div class="sub">Каждые 50 минут Феликс потягивается и зовёт тебя. Голосом: «напоминай размяться».</div></div><span class="switch" data-k="remind.stretch"></span></div>
-      <p class="lead small" style="margin-top:12px">Погладь Феликса мышкой по голове — ему понравится. Ещё: «сделай селфи», «запусти помидор», «камень, ножницы, бумага», «загадай число», «загадай загадку», «подними настроение».</p>
+      <p class="lead small" style="margin-top:12px">Погладь Феликса мышкой по голове — поводи курсором туда-сюда над макушкой, он зажмурится от удовольствия. Возьми мышкой и подбрось — упадёт на пол (не очень сильно, честно). Ещё: «подбрось монетку», «брось кубик», «какая погода», «сделай селфи», «запусти помидор», «камень, ножницы, бумага», «загадай загадку», «подними настроение».</p>
     </section>
 
     <section id="s-wardrobe">
@@ -183,7 +184,7 @@
       <div class="row"><div class="grow">Объявлять звонки голосом<div class="sub">Феликс скажет, кто звонит, а «прими» и «отклони» сработают без обращения.</div></div><span class="switch" data-k="phone.announce"></span></div>
       <div class="row"><div class="grow">Уведомления телефона<div class="sub">Показывать в облачке над Феликсом, без голоса.</div></div><span class="switch" data-k="phone.notifs"></span></div>
       <h2>Управление телефоном с компьютера</h2>
-      <p class="lead small">Окно «Телефон»: экран телефона на компьютере (Android 11+) — клик мышью работает как нажатие пальцем, есть «Назад», «Домой», список приложений и ввод текста с клавиатуры. На телефоне включи «Феликс Link — управление с компьютера» в специальных возможностях. Голосом: «Феликс, покажи экран телефона», «на телефоне назад», «напиши на телефоне …».</p>
+      <p class="lead small">Окно «Телефон»: экран телефона на компьютере живым видео до 60 кадров в секунду («Феликс Link» 1.2) — мышь работает как палец: нажал, повёл, отпустил. Есть «Назад», «Домой», список приложений и ввод текста с клавиатуры. В первый раз Android спросит «Начать трансляцию?» — нажми «Начать». Для касаний включи на телефоне «Феликс Link — управление с компьютера» в специальных возможностях. Голосом: «Феликс, покажи экран телефона», «на телефоне назад», «открой покупки», «напиши на телефоне …».</p>
       <div style="display:flex;gap:10px;align-items:center;margin-bottom:8px"><button class="btn primary" id="phPanel">Открыть телефон на компьютере</button><span class="dim small" id="phCtl"></span></div>
       <h2>Приложения для дел</h2>
       <p class="lead small">Выбери, какое приложение телефона открывать: «Феликс, закажи пиццу» — доставку, «вызови такси до работы» — такси, «маршрут до вокзала» — карты, «купи наушники» — магазин. Феликс откроет приложение и впишет запрос в поиск; заказ и оплату подтверждаешь сам.</p>

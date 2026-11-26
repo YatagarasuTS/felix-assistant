@@ -13,7 +13,7 @@ app\                 программа на Electron 33
   ui\wardrobe3d.js   гардероб в 3D: аксессуары из простых фигур, ширма, перекраска нарядов, анимации надевания
   ui\wardrobe-catalog.json  каталог нарядов и вещей (имена, слова для голоса, цвета) — один для программы, настроек и роликов
   lib\llm.js         нейросеть: аккаунт Anthropic пользователя (@anthropic-ai/sdk), Ollama
-  lib\link.js        связь с «Феликс Link»: UDP-поиск 47891, TCP 47890 (AES-256-GCM), APK по HTTP 47892
+  lib\link.js        связь с «Феликс Link»: UDP-поиск 47891, TCP 47890 (AES-256-GCM), APK по HTTP 47892, видео экрана TCP 47893
   lib\tts.js         голос Piper; свой HTTP-голос; голос Windows
   lib\core.js        мост к FelixCore.exe;  lib\input.js — к FelixInput.exe
   ui\                окна: assistant (3D), settings, welcome, call, phone (экран телефона на компьютере)
@@ -25,7 +25,7 @@ stage\               данные программы для запуска из 
 model\               3D-модель: felix.vroid (проект VRoid Studio) и felix.vrm
 promo\               рекламные ролики: make_audio*.py (реплики Piper, музыка) → сцена HTML → main.js (кадры → ffmpeg)
 tools\               shot.js (снимки окон), wardrobe-gallery.html (все вещи, наряды, позы и ширма — сеткой), brain-*-test.js (разбор фраз), felix_recolor.py, make_icons.py, npm-fetch.ps1
-test\                эмуляторы телефона (link_client.js, link_phone_test.js, wardrobe_test.js), запуск из исходников
+test\                эмуляторы телефона (link_client.js, link_phone_test.js, wardrobe_test.js, cast_test.js), pet_drag_test.ps1, run_all.ps1, запуск из исходников
 docs\                LICENSE.txt и README.txt для установщика, тексты сторонних лицензий, эта страница
 ```
 
@@ -84,7 +84,7 @@ node_modules\electron\dist\electron.exe test\link_phone_test.js TESTCODE report.
 node_modules\electron\dist\electron.exe test\link_client.js TESTCODE report.txt stage\phone\FelixLink.apk
 ```
 
-Гардероб и игры голосом — 	est\wardrobe_test.js TESTCODE report.txt (Феликс запущен с FELIX_PICTURES и FELIX_SHOTS — тестовые папки для селфи и покадровых снимков анимаций). Посадка вещей: `electron tools\shot.js <папка> "/tools/wardrobe-gallery.html?mode=acc&part=0" 1600 1000 7000` (mode: acc, showcase, outfits, poses, screen, item&id=…).
+Гардероб и игры голосом — `test\wardrobe_test.js TESTCODE report.txt` (Феликс запущен с FELIX_PICTURES и FELIX_SHOTS — тестовые папки для селфи и покадровых снимков анимаций). Посадка вещей: `electron tools\shot.js <папка> "/tools/wardrobe-gallery.html?mode=acc&part=0" 1600 1000 7000` (mode: acc, showcase, outfits, poses, screen, item&id=…).
 
 Снимки окон без запуска ассистента: `electron tools\shot.js <папка> phone.html 1020 860 2500 settings.html#phone 980 1700 3000` (`SHOT_PHONE_ON=1` — «подключённый» телефон).
 
@@ -103,6 +103,18 @@ node_modules\electron\dist\electron.exe test\link_client.js TESTCODE report.txt 
 | `service {pkg, links[], query, dest, near}` | дело: ссылки с `{q}`, `{addr}`, `{lat}`, `{lon}`; не вышло — запуск и запрос в поиск |
 | `nav {action}` | `back`, `home`, `recents`, `notifications`, `quick`, `lock`, `screenshot`, `power` |
 | `tap {x, y, long}`, `swipe {x1, y1, x2, y2, ms}`, `text {text, enter, replace, erase}` | касания (доли экрана 0…1) и ввод текста |
-| `screen`, `shot {w, q}` | размер экрана и снимок JPEG (Android 11+) |
+| `screen`, `shot {w, q}` | размер экрана и снимок JPEG (Android 11+); в `screen` с 1.2 — `cast`, `liveTouch` |
+| `cast {on, port, token, maxSize, fps, bitrate}` | видеопоток экрана (1.2): `streaming` или `consent` (ждёт «Начать» на телефоне); `on: false` — стоп |
+| `castkey` | попросить ключевой кадр (декодер потерял кадры) |
+
+Касание «вживую» (1.2) — без ответа и мимо очереди команд: `{ t: 'touch', a: 'down'|'move'|'up', x, y }` (доли 0…1). Телефон ведёт палец непрерывным жестом (`dispatchGesture` + `continueStroke`), пока не придёт `up`.
+
+**Видеопоток (1.2).** Компьютер выдаёт разовый пропуск (`token`) и слушает TCP 47893; телефон подключается сам. MediaProjection → виртуальный дисплей → аппаратный кодер H.264 Baseline (до 60 к/с, без B-кадров, низкая задержка). Кадр в сети: `[длина u32][iv 12][AES-GCM(тип u8, номер u32, время u64, данные)][тег 16]` тем же ключом сопряжения; типы: 0 — привет `{token, w, h, sw, sh, fps}` (и новый размер при повороте), 1 — SPS/PPS, 2 — ключевой кадр, 3 — обычный. Номера только растут, первый кадр без верного пропуска — разрыв. На компьютере — WebCodecs `VideoDecoder` (Annex B, `optimizeForLatency`) → `<canvas>`. Окно свернули или закрыли — поток останавливается, разрешение Android держится ещё 10 минут.
 
 Всё из 1.1 работает через службу специальных возможностей «Феликс Link — управление с компьютера» и только по команде с компьютера.
+
+## Проверки 1.3
+
+`powershell -File test\run_all.ps1` — всё подряд на Феликсе из исходников: разбор фраз, эмулятор телефона, трансляция экрана (`test\cast_test.js`: настоящий H.264 из `test\cast\stream.h264` по 47893, частота кадров и касания), гардероб, связь и APK, поглаживание и перетаскивание (`test\pet_drag_test.ps1`: курсор водит над головой). Феликс запускается с `FELIX_TEST=<пароль>` — тогда открыт локальный порт 47898 для проверок (окна, снимки, «мышь»); без этой переменной порта нет. Тестовый поток: `ffmpeg -f lavfi -i testsrc2=size=576x1248:rate=60 -t 6 -c:v libx264 -profile:v baseline -tune zerolatency -threads 1 -g 120 -x264-params aud=1 -f h264 test\cast\stream.h264`.
+
+Эффекты в окне Феликса без запуска ассистента: `electron tools\shot.js <папка> "assistant.html?portrait=1&pose=idle&wx=rain&temp=5" 460 634 4500` (`wx`: sun, moon, partly, cloud, fog, rain, snow, storm; `toss=coin|dice&res=…&tt=<с>` — застывший момент броска; `dance=1`).

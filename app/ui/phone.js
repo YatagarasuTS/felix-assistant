@@ -120,35 +120,138 @@ $('#tUrl').onclick = () => {
 };
 
 // ---------------------------------------------------------------- экран телефона
-const img = $('#img'), msg = $('#msg'), frame = $('#frame'), screenEl = $('#screen');
-let ST = null, info = null, streaming = false, lastFrame = 0;
+// «Феликс Link» 1.2+: видеопоток H.264 до 60 к/с (аппаратный кодер телефона → WebCodecs здесь) и касания «вживую».
+// Старые версии и отказ в разрешении на трансляцию — снимками экрана (Android 11+, ~3 к/с).
+const img = $('#img'), cvs = $('#video'), msg = $('#msg'), frame = $('#frame'), screenEl = $('#screen');
+const g2 = cvs.getContext('2d', { alpha: false, desynchronized: true });
+let ST = null, info = null, streaming = false, lastFrame = 0, mode = '';
+const surface = () => (mode === 'video' ? cvs : img);
 
 function message(title, text, btn) {
-  img.style.display = 'none'; $('#live').style.display = 'none';
+  img.style.display = 'none'; cvs.style.display = 'none'; $('#live').style.display = 'none';
   msg.style.display = ''; msg.innerHTML = `<b>${title}</b>${text}${btn ? `<br><button class="btn" id="msgBtn">${btn[0]}</button>` : ''}`;
   if (btn) $('#msgBtn').onclick = btn[1];
 }
+function showSurface() {
+  msg.style.display = 'none'; $('#live').style.display = 'flex';
+  cvs.style.display = mode === 'video' ? 'block' : 'none'; img.style.display = mode === 'video' ? 'none' : 'block';
+}
 
-async function refresh() {
-  ST = await Y.invoke('phone:status');
+function setTitle() {
   const i = ST.info || {};
   $('#title').textContent = ST.connected ? `Телефон — ${i.device || 'телефон'}${ST.battery ? ` · ${ST.battery.level}%${ST.battery.charging ? ' ⚡' : ''}` : ''}` : 'Телефон — нет связи';
-  if (!ST.connected) { info = null; return message('Телефон не на связи', 'Открой на телефоне «Феликс Link» — он подключится сам. Телефон и компьютер должны быть в одной сети Wi-Fi.'); }
+}
+let accHinted = false;
+async function refresh() {
+  ST = await Y.invoke('phone:status');
+  setTitle();
+  if (!ST.connected) { info = null; castState = ''; resetDecoder(); mode = ''; return message('Телефон не на связи', 'Открой на телефоне «Феликс Link» — он подключится сам. Телефон и компьютер должны быть в одной сети Wi-Fi.'); }
   if (!ST.control) return message('Нужна новая версия «Феликс Link»', 'Версия на телефоне не умеет управление с компьютера. Обнови приложение: Настройки Феликса → Телефон → QR-код.', ['Открыть настройки', () => Y.invoke('open', 'settings', 'phone')]);
   const r = await cmd('screen');
   info = r && r.ok ? r.data : null;
   if (!info) return message('Телефон не ответил', '', ['Повторить', refresh]);
   if (info.w && info.h) frame.style.setProperty('--ar', (info.w / info.h).toFixed(4));
+  if (info.cast && window.VideoDecoder) {
+    if (!info.acc && !accHinted) { accHinted = true; toast('Экран виден. Чтобы нажимать по нему мышью — включи «Управление с компьютера» в «Феликс Link»'); }
+    return startCast();
+  }
   if (!info.acc) return message('Включи управление на телефоне', 'В «Феликс Link» нажми «Открыть» у пункта «Управление с компьютера» и включи службу «Феликс Link — управление с компьютера» в специальных возможностях. Приложения и дела справа работают и без неё.', ['Проверить снова', refresh]);
-  if (!info.canShot) return message('Экран не показывается', `Показ экрана на компьютере работает на Android 11 и новее. Кнопки внизу, приложения и дела работают.`);
-  stream();
+  if (!info.canShot) return message('Экран не показывается', 'Обнови «Феликс Link» до версии 1.2 — экран будет виден видеопотоком на любом Android 9+. Кнопки внизу, приложения и дела работают.');
+  mode = 'shot'; stream();
 }
+
+// ---- видеопоток
+let dec = null, cfgBytes = null, codec = '', waitKey = true, castState = '', castT = null, decErrors = 0, frames = 0, keyAskedAt = 0;
+async function startCast() {
+  if (castState === 'starting' || castState === 'live' || castState === 'consent') return;
+  castState = 'starting';
+  const r = await Y.invoke('phone:cast', true);
+  if (!r || !r.ok) { castState = ''; return fallback(r && r.text); }
+  castState = r.state === 'consent' ? 'consent' : 'starting';
+  if (castState === 'consent') message('Подтверди на телефоне', 'На телефоне открылось окно Android «Начать запись или трансляцию?» — нажми «Начать» (на Android 14 выбери «Весь экран»). Окна нет — нажми уведомление «Показать экран на компьютере?». Спросит один раз; потом 10 минут — без вопросов.', ['Показывать снимками', () => fallback()]);
+  clearTimeout(castT);
+  castT = setTimeout(() => { if (castState !== 'live') noVideo(); }, castState === 'consent' ? 45000 : 7000);
+}
+const note = (...a) => Y.invoke('phone:stats', { log: true, mode: 'cast', fps: a.join(' '), size: castState });   // переходы — в журнал Феликса
+function stopCast(why = '') { clearTimeout(castT); if (castState) { note('stop', why); Y.invoke('phone:cast', false); } castState = ''; resetDecoder(); }
+function fallback(why) {
+  stopCast('fallback: ' + (why || ''));
+  if (info && info.canShot) { mode = 'shot'; stream(); if (why) toast(why); }
+  else message('Экран не показывается', esc(why || 'Без разрешения на трансляцию экран не виден.') + ' Кнопки внизу, приложения и дела работают.', ['Попробовать снова', () => refresh()]);
+}
+function resetDecoder() { try { if (dec && dec.state !== 'closed') dec.close(); } catch { } dec = null; waitKey = true; }
+function askKey() { if (performance.now() - keyAskedAt > 800) { keyAskedAt = performance.now(); Y.invoke('phone:castkey'); } }
+/** Строка кодека из SPS (NAL 7) в потоке Annex B: avc1.PPCCLL */
+function avcCodec(b) {
+  for (let i = 0; i + 4 < b.length; i++) {
+    if (b[i] !== 0 || b[i + 1] !== 0) continue;
+    const s = b[i + 2] === 1 ? i + 3 : b[i + 2] === 0 && b[i + 3] === 1 ? i + 4 : -1;
+    if (s > 0 && (b[s] & 0x1f) === 7) return 'avc1.' + [b[s + 1], b[s + 2], b[s + 3]].map(x => x.toString(16).padStart(2, '0')).join('');
+  }
+  return null;
+}
+function setupDecoder(hw = 'prefer-hardware') {
+  resetDecoder();
+  dec = new VideoDecoder({
+    output: fr => { g2.drawImage(fr, 0, 0, cvs.width, cvs.height); fr.close(); frames++; lastFrame = performance.now(); if (castState !== 'live') { castState = 'live'; clearTimeout(castT); showSurface(); } },
+    error: e => {
+      console.error('decoder', e);
+      if (++decErrors > 4) return fallback('Видео не декодируется — показываю снимками.');
+      setTimeout(() => { setupDecoder(decErrors > 1 ? 'no-preference' : hw); askKey(); }, 150);
+    }
+  });
+  dec.configure({ codec, optimizeForLatency: true, hardwareAcceleration: hw });
+  waitKey = true;
+}
+Y.on('phone:video', f => {
+  if (f.type === 0) {                                     // привет или поворот экрана: новый размер
+    mode = 'video'; cvs.width = f.info.w; cvs.height = f.info.h;
+    frame.style.setProperty('--ar', (f.info.w / f.info.h).toFixed(4));
+    waitKey = true; return;
+  }
+  if (f.type === 1) { cfgBytes = new Uint8Array(f.data); codec = avcCodec(cfgBytes) || 'avc1.42e01f'; setupDecoder(); return; }
+  const key = f.type === 2;
+  // некоторые кодеры кладут SPS/PPS прямо в ключевой кадр, без отдельного «конфига»
+  if (key && (!dec || dec.state !== 'configured')) { const c = avcCodec(new Uint8Array(f.data)); if (c) { codec = c; cfgBytes = null; setupDecoder(); } }
+  if (!dec || dec.state !== 'configured') return;
+  if (waitKey && !key) return askKey();
+  waitKey = false;
+  let data = new Uint8Array(f.data);
+  if (key && cfgBytes) { const d = new Uint8Array(cfgBytes.length + data.length); d.set(cfgBytes); d.set(data, cfgBytes.length); data = d; }   // ключевому кадру — SPS/PPS впереди
+  try { dec.decode(new EncodedVideoChunk({ type: key ? 'key' : 'delta', timestamp: f.pts, data })); } catch (e) { console.error(e); waitKey = true; askKey(); }
+});
+Y.on('phone:cast', m => {
+  note('event', m.state, m.text || '');
+  if (m.state === 'minimized') { if (castState) stopCast('minimized'); return; }       // свернули окно — телефон отдыхает
+  if (m.state === 'restored') { refresh(); return; }
+  if (m.state === 'denied') { castState = ''; fallback('Трансляцию на телефоне не разрешили — показываю снимками (медленнее).'); }
+  else if (m.state === 'error') { castState = ''; fallback(m.text || 'Ошибка трансляции'); }
+  else if (m.state === 'stopped' && castState) {
+    const wasLive = castState === 'live';
+    castState = ''; resetDecoder(); clearTimeout(castT);
+    if (wasLive) { if (!document.hidden) setTimeout(refresh, 1200); }      // телефон перезапустил поток — подхватываем
+    else noVideo();                                                         // так и не дошло ни кадра
+  }
+});
+function noVideo() {
+  stopCast('no video');
+  message('Видео не дошло', 'Телефон начал трансляцию, но не смог подключиться к компьютеру. Скорее всего, брандмауэр Windows не пускает порт 47893.', ['Разрешить в брандмауэре', async () => { await Y.invoke('phone:firewall'); refresh(); }]);
+  if (info && info.canShot) setTimeout(() => { if (!castState && mode !== 'video') { mode = 'shot'; stream(); } }, 6000);
+}
+// кадры в секунду — в значке «экран телефона» и раз в 5 с в журнал
+let statN = 0, lastFps = 0;
+window.__phoneState = () => ({ mode, castState, fps: lastFps, w: cvs.width, h: cvs.height, codec, live: $('#live').textContent, msg: msg.style.display === 'none' ? '' : msg.textContent });
+setInterval(() => {
+  const f = frames / 2; frames = 0; lastFps = Math.round(f);
+  if (mode === 'video' && castState === 'live') $('#live').innerHTML = `<i></i>экран телефона · ${Math.round(f)} к/с`;
+  if (++statN % 3 === 0 && mode) Y.invoke('phone:stats', { log: true, mode, fps: Math.round(f), size: mode === 'video' ? `${cvs.width}x${cvs.height}` : '' });
+}, 2000);
 
 async function stream() {
   if (streaming) return;
   streaming = true;
   let fails = 0;
-  while (!document.hidden && ST && ST.connected && info && info.canShot) {
+  while (!document.hidden && mode === 'shot' && ST && ST.connected && info && info.canShot) {
     const t0 = Date.now();
     const r = await cmd('shot', { w: 540, q: 62 });
     const pause = 125 - (Date.now() - t0);            // не чаще 8 кадров в секунду (телефон и так отдаёт ~3)
@@ -157,7 +260,7 @@ async function stream() {
       fails = 0;
       img.src = 'data:image/jpeg;base64,' + r.data.jpeg;
       if (r.data.w && r.data.h) frame.style.setProperty('--ar', (r.data.w / r.data.h).toFixed(4));
-      img.style.display = 'block'; msg.style.display = 'none'; $('#live').style.display = 'flex';
+      showSurface(); frames++;
       lastFrame = Date.now();
     } else {
       fails++;
@@ -167,30 +270,61 @@ async function stream() {
   }
   streaming = false;
 }
+// окно свернули — трансляцию останавливаем (батарея телефона), развернули — снова (разрешение телефон помнит 10 минут)
+// перекрыли другим окном — поток идёт дальше (Windows считает такое окно «скрытым», но человек его вот-вот увидит)
 document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
-Y.on('phone', () => { const was = ST && ST.connected; refresh().then(() => { if (!was && ST.connected) apps = null; }); });
+addEventListener('beforeunload', () => { if (castState) Y.invoke('phone:cast', false); });
+// связь появилась/пропала — заново; заряд батареи — только заголовок
+Y.on('phone', s => {
+  const was = !!(ST && ST.connected);
+  if (s && was === !!s.connected) { ST = s; setTitle(); return; }
+  if (castState) { castState = ''; resetDecoder(); }
+  refresh().then(() => { if (!was && ST.connected) apps = null; });
+});
 
-// мышь → пальцы: доли экрана 0…1
-const frac = e => { const r = img.getBoundingClientRect(); return { x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height }; };
+// мышь → пальцы: доли экрана 0…1 (с учётом полей: картинка вписана в рамку)
+function frac(e) {
+  const el = surface(), r = el.getBoundingClientRect();
+  const vw = mode === 'video' ? cvs.width : img.naturalWidth || r.width, vh = mode === 'video' ? cvs.height : img.naturalHeight || r.height;
+  const k = Math.min(r.width / vw, r.height / vh), cw = vw * k, ch = vh * k, ox = r.left + (r.width - cw) / 2, oy = r.top + (r.height - ch) / 2;
+  return { x: Math.max(0, Math.min(1, (e.clientX - ox) / cw)), y: Math.max(0, Math.min(1, (e.clientY - oy) / ch)) };
+}
 function ripple(e) {
   const r = frame.querySelector('.glassScr').getBoundingClientRect(), d = document.createElement('i');
   d.className = 'ripple'; d.style.left = (e.clientX - r.left) + 'px'; d.style.top = (e.clientY - r.top) + 'px';
   frame.querySelector('.glassScr').appendChild(d); setTimeout(() => d.remove(), 500);
 }
-let down = null;
-img.addEventListener('pointerdown', e => { if (e.button !== 0) return; img.setPointerCapture(e.pointerId); down = { ...frac(e), t: Date.now() }; screenEl.focus(); });
-img.addEventListener('pointerup', e => {
-  if (!down || e.button !== 0) return;
-  const p = frac(e), dt = Date.now() - down.t, dist = Math.hypot(p.x - down.x, p.y - down.y);
-  ripple(e);
-  if (dist < 0.02) cmd('tap', { x: down.x, y: down.y, long: dt > 550 });
-  else cmd('swipe', { x1: down.x, y1: down.y, x2: p.x, y2: p.y, ms: Math.max(120, Math.min(1500, dt)) });
-  down = null;
-});
-img.addEventListener('contextmenu', e => { e.preventDefault(); ripple(e); cmd('nav', { action: 'back' }); });
-img.addEventListener('auxclick', e => { if (e.button === 1) { e.preventDefault(); cmd('nav', { action: 'home' }); } });
+// касание «вживую» (Феликс Link 1.2 + спец. возможность): палец опускается, ведётся за мышью раз в кадр и поднимается
+const liveTouch = () => !!(info && info.liveTouch);
+let down = null, pend = null, raf = 0;
+const touch = (a, p) => Y.invoke('phone:touch', a, p.x, p.y);
+function bindSurface(el) {
+  el.addEventListener('pointerdown', e => {
+    if (e.button !== 0) return;
+    el.setPointerCapture(e.pointerId); down = { ...frac(e), t: Date.now() }; screenEl.focus();
+    if (liveTouch()) touch('down', down);
+  });
+  el.addEventListener('pointermove', e => {
+    if (!down || !liveTouch()) return;
+    pend = frac(e);
+    if (!raf) raf = requestAnimationFrame(() => { raf = 0; if (pend && down) { touch('move', pend); pend = null; } });
+  });
+  el.addEventListener('pointerup', e => {
+    if (!down || e.button !== 0) return;
+    const p = frac(e), dt = Date.now() - down.t, dist = Math.hypot(p.x - down.x, p.y - down.y);
+    ripple(e);
+    if (liveTouch()) { if (pend) { touch('move', pend); pend = null; } touch('up', p); }
+    else if (dist < 0.02) cmd('tap', { x: down.x, y: down.y, long: dt > 550 });
+    else cmd('swipe', { x1: down.x, y1: down.y, x2: p.x, y2: p.y, ms: Math.max(120, Math.min(1500, dt)) });
+    down = null;
+  });
+  el.addEventListener('pointercancel', () => { if (down && liveTouch()) touch('up', down); down = null; });
+  el.addEventListener('contextmenu', e => { e.preventDefault(); ripple(e); cmd('nav', { action: 'back' }); });
+  el.addEventListener('auxclick', e => { if (e.button === 1) { e.preventDefault(); cmd('nav', { action: 'home' }); } });
+  el.addEventListener('wheel', onWheel, { passive: false });
+}
 let wheelAcc = 0, wheelT = null, wheelAt = null;
-img.addEventListener('wheel', e => {
+function onWheel(e) {
   e.preventDefault();
   wheelAcc += e.deltaY; wheelAt = frac(e);
   clearTimeout(wheelT);
@@ -199,8 +333,9 @@ img.addEventListener('wheel', e => {
     const y1 = 0.5 + k / 2, y2 = 0.5 - k / 2;   // колесо вниз — палец ведёт вверх
     wheelAcc = 0;
     cmd('swipe', { x1: x, y1, x2: x, y2, ms: 260 });
-  }, 120);
-}, { passive: false });
+  }, 90);
+}
+bindSurface(img); bindSurface(cvs);
 
 // клавиатура → поле ввода на телефоне (пачками, чтобы не слать по букве)
 let typed = '', erase = 0, typeT = null;

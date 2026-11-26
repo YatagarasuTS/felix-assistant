@@ -112,6 +112,70 @@ class FelixAccessibility : AccessibilityService() {
         return ok
     }
 
+    // ---------------------------------------------------------------- касание «вживую»: палец идёт за мышью
+    // Жест режется на короткие куски, каждый продолжает предыдущий (willContinue) — палец не отрывается от экрана,
+    // поэтому перетаскивание, прокрутка и долгое нажатие работают как на самом телефоне. Всё — на главном потоке.
+    private var stroke: GestureDescription.StrokeDescription? = null
+    private var lastPt: Pair<Float, Float>? = null
+    private var lastAt = 0L
+    private var busy = false
+    private val queue = ArrayList<Pair<Float, Float>>()
+    private var upPending = false
+    private val keepAlive = Runnable { if (stroke != null && !busy) flush(true) }
+
+    fun touch(a: String, x: Double, y: Double) { main.post { touchMain(a, x, y) } }
+
+    private fun toPx(x: Double, y: Double): Pair<Float, Float> {
+        val (w, h) = screenSize()
+        return (x.coerceIn(0.0, 1.0) * (w - 1)).toFloat() to (y.coerceIn(0.0, 1.0) * (h - 1)).toFloat()
+    }
+
+    private fun touchMain(a: String, x: Double, y: Double) {
+        val p = toPx(x, y)
+        when (a) {
+            "down" -> {
+                main.removeCallbacks(keepAlive)
+                queue.clear(); upPending = false
+                lastPt = p; lastAt = android.os.SystemClock.uptimeMillis()
+                val path = Path().apply { moveTo(p.first, p.second) }
+                dispatchSeg(GestureDescription.StrokeDescription(path, 0, 1, true), false)
+            }
+            "move" -> { if (stroke == null && !busy) return; queue.add(p); if (!busy) flush(false) }
+            "up" -> { if (stroke == null && !busy) return; queue.add(p); upPending = true; if (!busy) flush(false) }
+        }
+    }
+
+    private fun flush(force: Boolean) {
+        val s0 = stroke ?: return
+        if (queue.isEmpty() && !upPending && !force) return
+        main.removeCallbacks(keepAlive)
+        val from = lastPt ?: return
+        val pts = ArrayList(queue); queue.clear()
+        val path = Path().apply { moveTo(from.first, from.second); for (q in pts) lineTo(q.first, q.second) }
+        val now = android.os.SystemClock.uptimeMillis()
+        val dur = (now - lastAt).coerceIn(8, 120)
+        lastAt = now
+        if (pts.isNotEmpty()) lastPt = pts.last()
+        val end = upPending
+        upPending = false
+        val s = try { s0.continueStroke(path, 0, dur, !end) } catch (_: Exception) { stroke = null; return }
+        dispatchSeg(s, end)
+    }
+
+    private fun dispatchSeg(s: GestureDescription.StrokeDescription, last: Boolean) {
+        stroke = if (last) null else s
+        busy = true
+        val ok = dispatchGesture(GestureDescription.Builder().addStroke(s).build(), object : GestureResultCallback() {
+            override fun onCompleted(d: GestureDescription?) {
+                busy = false
+                if (stroke == null) return
+                if (queue.isNotEmpty() || upPending) flush(false) else main.postDelayed(keepAlive, 60)   // мышь стоит — палец держим
+            }
+            override fun onCancelled(d: GestureDescription?) { busy = false; stroke = null; queue.clear(); upPending = false }
+        }, main)
+        if (!ok) { busy = false; stroke = null }
+    }
+
     // ---------------------------------------------------------------- ввод текста в поле, где стоит курсор
     fun typeText(text: String, enter: Boolean, replace: Boolean, erase: Int = 0): Boolean {
         val n = findInput() ?: return false

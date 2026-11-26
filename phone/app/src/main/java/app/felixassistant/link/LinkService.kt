@@ -136,6 +136,25 @@ class LinkService : Service() {
         try { getSystemService(NotificationManager::class.java).notify(1, notification(text)) } catch (_: Exception) {}
     }
 
+    // ---------------------------------------------------------------- трансляция экрана (ScreenCast)
+    fun currentKey(): SecretKeySpec? = key
+
+    fun cast(m: JSONObject): Res {
+        if (!m.optBoolean("on", true)) { ScreenCast.stop(); return Res(true) }
+        val host = sock?.inetAddress?.hostAddress ?: return Res(false, "нет связи")
+        return ScreenCast.start(this, m, host, key)
+    }
+
+    /** Android 10+: запись экрана разрешена только службе переднего плана с типом mediaProjection */
+    fun castForeground(on: Boolean) {
+        try {
+            if (Build.VERSION.SDK_INT >= 29) {
+                val type = android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC or (if (on) android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION else 0)
+                startForeground(1, notification(status), type)
+            }
+        } catch (_: Exception) {}
+    }
+
     /** Вызывается при каждом снимке экрана для компьютера */
     fun screenShared() {
         val was = System.currentTimeMillis() < sharedUntil
@@ -317,6 +336,7 @@ class LinkService : Service() {
     }
 
     private fun closeSock() {
+        ScreenCast.stop()                       // компьютер пропал — трансляцию тоже останавливаем
         synchronized(sendLock) { out = null }
         try { sock?.close() } catch (_: Exception) {}
         sock = null
@@ -324,6 +344,8 @@ class LinkService : Service() {
 
     private fun handle(m: JSONObject) {
         when (m.optString("t")) {
+            // касания из окна «Телефон» — сразу, мимо очереди команд (там может ждать снимок или геокодер)
+            "touch" -> FelixAccessibility.instance?.touch(m.optString("a"), m.optDouble("x"), m.optDouble("y"))
             "cmd" -> cmds.execute {
                 val id = m.optString("id")
                 val r = try { phone.run(m) } catch (e: Exception) { Res(false, e.message ?: "ошибка") }

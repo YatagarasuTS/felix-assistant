@@ -12,7 +12,7 @@ const os = require('os');
 const fs = require('fs');
 const { EventEmitter } = require('events');
 
-const PORT = 47890, DISC_PORT = 47891, APK_PORT = 47892;
+const PORT = 47890, DISC_PORT = 47891, APK_PORT = 47892, VIDEO_PORT = 47893;
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
 const normCode = c => String(c || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -86,7 +86,63 @@ class Link extends EventEmitter {
     this.http.listen(APK_PORT, '0.0.0.0');
   }
 
+  // ---------------------------------------------------------------- экран телефона видеопотоком (Феликс Link 1.2+)
+  // Телефон подключается к VIDEO_PORT сам; первым кадром шлёт разовый пропуск castToken (выдаём в команде cast).
+  // Кадр: [u32 длина][iv 12][AES-256-GCM(тип u8, номер u32, время u64, данные)][тег 16]. Типы: 0 привет, 1 SPS/PPS, 2 ключевой, 3 обычный.
+  castOpen() {
+    this.castToken = crypto.randomBytes(16).toString('hex');
+    if (!this.video) {
+      this.video = net.createServer(s => this.onVideo(s));
+      this.video.on('error', e => this.log('link video', e.message));
+      this.video.listen(VIDEO_PORT, '0.0.0.0');
+    }
+    return this.castToken;
+  }
+  castClose() {
+    this.castToken = null;
+    try { this.videoSock && this.videoSock.destroy(); } catch { }
+    this.videoSock = null;
+  }
+  onVideo(s) {
+    s.setNoDelay(true);
+    let buf = Buffer.alloc(0), authed = false, seq = 0;
+    const kill = why => { if (why) this.log('link video:', why, s.remoteAddress); s.destroy(); };
+    s.on('data', chunk => {
+      buf = buf.length ? Buffer.concat([buf, chunk]) : chunk;
+      while (buf.length >= 4) {
+        const len = buf.readUInt32BE(0);
+        if (len < 29 || len > 8 << 20) return kill('битый кадр');
+        if (buf.length < 4 + len) break;
+        const all = buf.subarray(4, 4 + len); buf = buf.subarray(4 + len);
+        let plain;
+        try {
+          const d = crypto.createDecipheriv('aes-256-gcm', this.key(), all.subarray(0, 12));
+          d.setAuthTag(all.subarray(len - 16));
+          plain = Buffer.concat([d.update(all.subarray(12, len - 16)), d.final()]);
+        } catch { return kill('не тот ключ'); }
+        const type = plain[0], n = plain.readUInt32BE(1), pts = Number(plain.readBigUInt64BE(5)), data = plain.subarray(13);
+        if (n <= seq) return kill('повтор кадра');
+        seq = n;
+        if (!authed) {
+          let hello = null; try { hello = JSON.parse(data.toString('utf8')); } catch { }
+          if (type !== 0 || !hello || !this.castToken || hello.token !== this.castToken) return kill('чужое подключение');
+          authed = true;
+          if (this.videoSock && this.videoSock !== s) this.videoSock.destroy();
+          this.videoSock = s;
+          this.emit('video', { type: 0, pts, info: { w: hello.w, h: hello.h, sw: hello.sw, sh: hello.sh, fps: hello.fps } });
+          continue;
+        }
+        if (type === 0) { let i = null; try { i = JSON.parse(data.toString('utf8')); } catch { } this.emit('video', { type: 0, pts, info: i }); }   // поворот: новый размер
+        else this.emit('video', { type, pts, data: Buffer.from(data) });
+      }
+    });
+    s.on('error', () => { });
+    s.on('close', () => { if (this.videoSock === s) { this.videoSock = null; this.emit('video-end'); } });
+  }
+
   stop() {
+    try { this.video && this.video.close(); } catch { }
+    try { this.videoSock && this.videoSock.destroy(); } catch { }
     try { this.server && this.server.close(); } catch { }
     try { this.udp && this.udp.close(); } catch { }
     try { this.http && this.http.close(); } catch { }
@@ -150,6 +206,7 @@ class Link extends EventEmitter {
       case 'battery': this.battery = { level: m.level, charging: !!m.charging }; this.emit('battery', this.battery); break;
       case 'notif': this.emit('notif', m); break;
       case 'felix': this.emit('felix', String(m.text || '')); break;
+      case 'cast': this.emit('cast', m); break;                 // трансляция: denied | error | stopped
     }
   }
 
@@ -197,4 +254,4 @@ class Link extends EventEmitter {
   }
 }
 
-module.exports = { Link, newCode, normCode, PORT, DISC_PORT, APK_PORT };
+module.exports = { Link, newCode, normCode, PORT, DISC_PORT, APK_PORT, VIDEO_PORT };

@@ -28,15 +28,15 @@ using Microsoft.Win32;
 [assembly: AssemblyProduct("Felix")]
 [assembly: AssemblyCompany("Felix")]
 [assembly: AssemblyCopyright("© 2026 Felix")]
-[assembly: AssemblyVersion("1.2.0.0")]
-[assembly: AssemblyFileVersion("1.2.0.0")]
+[assembly: AssemblyVersion("1.3.0.0")]
+[assembly: AssemblyFileVersion("1.3.0.0")]
 
 namespace FelixSetup
 {
     static class Product
     {
         public const string Name = "Феликс";
-        public const string Version = "1.2.0";   // Build-Felix.ps1 сверяет с app\package.json
+        public const string Version = "1.3.0";   // Build-Felix.ps1 сверяет с app\package.json
         public const string Exe = "Felix.exe";
         public const string RegKey = @"Software\Microsoft\Windows\CurrentVersion\Uninstall\Felix";
         public const string Magic = "FELIXPK1", PortableMagic = "FELIXPT1";

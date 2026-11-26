@@ -104,6 +104,16 @@ function phone(code) {
   ok(c && c.pkg === 'ru.ozon.app.android' && c.query === 'наушники' && /ozon\.ru\/search/.test((c.links || [])[0] || ''), 'найди на озоне → Ozon, поиск');
   await waitSay(/Ozon|наушники/);
 
+  // 6б. «открой покупки» / «открой навигатор»: на компьютере таких нет — дела телефона (1.3; раньше «не нашёл приложение»)
+  felix('открой покупки');
+  c = await waitCmd(x => x.cmd === 'service');
+  ok(c && c.pkg === 'ru.ozon.app.android' && !c.query, 'открой покупки → магазин на телефоне (Ozon): ' + JSON.stringify(c && { pkg: c.pkg, query: c.query }));
+  await waitSay(/Ozon/);
+  felix('открой навигатор');
+  c = await waitCmd(x => x.cmd === 'service');
+  ok(c && c.pkg === 'ru.yandex.yandexmaps', 'открой навигатор → карты на телефоне');
+  await waitSay(/Карты/);
+
   // 7. кнопки и текст
   felix('на телефоне назад');
   c = await waitCmd(x => x.cmd === 'nav');

@@ -151,6 +151,9 @@ class PhoneCtl(private val ctx: Context, private val emit: (JSONObject) -> Unit)
         "text" -> acc { it.typeText(m.optString("text"), m.optBoolean("enter"), m.optBoolean("replace"), m.optInt("erase")) }
         "shot" -> shot(m)
         "screen" -> Res(true, data = screenInfo())
+        // видеотрансляция экрана (1.2): включить/выключить, попросить ключевой кадр
+        "cast" -> LinkService.instance?.cast(m) ?: Res(false, "нет связи")
+        "castkey" -> { ScreenCast.requestKeyFrame(); Res(true) }
         else -> Res(false, "неизвестная команда")
     }
 
@@ -165,6 +168,7 @@ class PhoneCtl(private val ctx: Context, private val emit: (JSONObject) -> Unit)
     private fun screenInfo(): JSONObject {
         val a = FelixAccessibility.instance
         val o = JSONObject().put("acc", a != null).put("canShot", a != null && android.os.Build.VERSION.SDK_INT >= 30).put("android", android.os.Build.VERSION.SDK_INT)
+            .put("cast", true).put("liveTouch", a != null)
         a?.screenSize()?.let { (w, h) -> o.put("w", w).put("h", h) }
         return o
     }

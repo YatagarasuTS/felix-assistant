@@ -16,8 +16,8 @@ $INCLUDE = @(
   'phone/build.gradle.kts', 'phone/settings.gradle.kts', 'phone/gradle.properties', 'phone/app/build.gradle.kts', 'phone/app/src/**',
   'build/Build-Felix.ps1', 'build/Build-Phone.ps1', 'build/installer/FelixSetup.cs', 'build/installer/setup.manifest',
   'docs/**', 'model/felix.vrm', 'model/felix.vroid', 'stage/sounds/*.wav',
-  'promo/main.js', 'promo/package.json', 'promo/promo.html', 'promo/promo.js', 'promo/vert.html', 'promo/vert.js', 'promo/phone_screen.html', 'promo/make_audio.py', 'promo/make_audio_phone.py', 'promo/wardrobe.html', 'promo/wardrobe.js', 'promo/make_audio_wardrobe.py',
-  'test/link_client.js', 'test/link_phone_test.js', 'test/wardrobe_test.js', 'test/run_dev.cmd', 'test/cmd_dev.cmd',
+  'promo/main.js', 'promo/package.json', 'promo/promo.html', 'promo/promo.js', 'promo/vert.html', 'promo/vert.js', 'promo/phone_screen.html', 'promo/make_audio.py', 'promo/make_audio_phone.py', 'promo/wardrobe.html', 'promo/wardrobe.js', 'promo/make_audio_wardrobe.py', 'promo/live.html', 'promo/live.js', 'promo/make_audio_live.py',
+  'test/link_client.js', 'test/link_phone_test.js', 'test/wardrobe_test.js', 'test/cast_test.js', 'test/pet_drag_test.ps1', 'test/run_all.ps1', 'test/run_dev.cmd', 'test/cmd_dev.cmd',
   'tools/brain-test.js', 'tools/brain-phone-test.js', 'tools/brain-wardrobe-test.js', 'tools/wardrobe-gallery.html', 'tools/shot.js', 'tools/felix_recolor.py', 'tools/make_icons.py', 'tools/vrm_dump.py', 'tools/npm-fetch.ps1', 'tools/publish-source.ps1', 'tools/publish-release.ps1'
 )
 # страховка: такого в репозитории быть не должно никогда

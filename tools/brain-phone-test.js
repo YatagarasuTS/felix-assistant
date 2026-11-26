@@ -40,7 +40,19 @@ const CASES = [
   ['открой загрузки', { intent: 'open', target: 'загрузки' }],
   ['включи трек группа крови', { intent: 'music.play', query: 'группа крови' }],
   ['какая погода завтра', { intent: 'weather', city: '', day: 1 }],
-  ['напечатай привет', { intent: 'type', text: 'привет' }]
+  ['напечатай привет', { intent: 'type', text: 'привет' }],
+  // 1.3: найденное в журнале — «открой покупки» не находилось, «убери телеграм» открывало телеграм
+  ['открой покупки', { intent: 'phone.shop', query: '', open: true }],
+  ['открой магазин', { intent: 'phone.shop', query: '', open: true }],
+  ['открой такси', { intent: 'phone.taxi', to: '' }],
+  ['открой доставку', { intent: 'phone.food', query: '' }],
+  ['убери телеграм', { intent: 'app.minimize', target: 'телеграм' }],
+  ['открой телеграм', { intent: 'open', target: 'телеграм' }],
+  ['открой телеграм чат с мамой', { intent: 'tg.open' }],
+  ['включи музыку', { intent: 'media', action: 'play' }],
+  ['подбрось монетку', { intent: 'coin' }],
+  ['брось кубик', { intent: 'dice' }],
+  ['орел или решка', { intent: 'coin' }]
 ];
 
 let fail = 0;
@@ -64,5 +76,6 @@ chk(pa.pickByVoice('яндекс еду', food, b.translit)?.pkg === 'ru.foodfox
 chk(pa.pickByVoice('самокат', food, b.translit)?.pkg === 'ru.sbcs.store', 'голосом: «самокат»');
 chk(pa.pickByVoice('второе', food, b.translit)?.pkg === 'ru.sbcs.store', 'голосом: «второе»');
 chk(pa.pickByVoice('не знаю', food, b.translit) === null, 'голосом: непонятное → null');
+chk(b.serviceWord('покупки') === 'shop' && b.serviceWord('доставку') === 'food' && b.serviceWord('навигатор') === 'maps' && b.serviceWord('калькулятор') === null, 'serviceWord: покупки/доставку/навигатор, калькулятор — нет');
 console.log(fail ? `ОШИБОК: ${fail}` : 'ВСЁ ОК');
 process.exit(fail ? 1 : 0);
